@@ -6,7 +6,9 @@ import {
   BarChart3, 
   Settings,
   LogOut,
-  Tag
+  Tag,
+  ClipboardList,
+  ShieldCheck
 } from 'lucide-react';
 import { authService } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +26,8 @@ const Sidebar = () => {
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/documents', icon: FileText, label: 'Documents' },
     { path: '/interests', icon: Tag, label: 'Interests' },
+    { path: '/surveys', icon: ClipboardList, label: 'Surveys' },
+    { path: '/posts-moderation', icon: ShieldCheck, label: 'Posts Moderation' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];

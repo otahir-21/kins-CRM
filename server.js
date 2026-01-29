@@ -38,6 +38,27 @@ const {
   getFCMToken
 } = require('./notifications-helpers');
 
+const {
+  createSurvey,
+  getAllSurveys,
+  getSurveyById,
+  getActiveHomePageSurvey,
+  updateSurvey,
+  deleteSurvey,
+  submitSurveyResponse,
+  getUserSurveyResponse,
+  getSurveyAnalytics,
+  getUserSurveyResponses
+} = require('./surveys-helpers');
+
+const {
+  getPostsPaginated,
+  getPostById,
+  deletePost,
+  hardDeletePost,
+  getReportedPostsPaginated
+} = require('./posts-helpers');
+
 const app = express();
 
 // Middleware
@@ -81,6 +102,16 @@ app.get('/', (req, res) => {
         addInterest: { method: 'POST', url: `${baseUrl}/api/users/:userId/interests` },
         removeInterest: { method: 'DELETE', url: `${baseUrl}/api/users/:userId/interests/:interestId` },
         updateInterests: { method: 'PUT', url: `${baseUrl}/api/users/:userId/interests` }
+      },
+      surveys: {
+        create: { method: 'POST', url: `${baseUrl}/api/surveys` },
+        getAll: `${baseUrl}/api/surveys`,
+        getActive: `${baseUrl}/api/surveys/active`,
+        getById: `${baseUrl}/api/surveys/:surveyId`,
+        update: { method: 'PUT', url: `${baseUrl}/api/surveys/:surveyId` },
+        delete: { method: 'DELETE', url: `${baseUrl}/api/surveys/:surveyId` },
+        submitResponse: { method: 'POST', url: `${baseUrl}/api/surveys/:surveyId/respond` },
+        analytics: `${baseUrl}/api/surveys/:surveyId/analytics`
       }
     },
     documentation: 'See README.md for detailed API documentation'
@@ -648,6 +679,222 @@ app.get('/api/users/:userId/fcm-token', async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+});
+
+// ==================== POSTS MODERATION ====================
+
+// Get posts (paginated - cost effective)
+app.get('/api/posts', async (req, res) => {
+  try {
+    const { limit = 20, startAfter, status = 'active' } = req.query;
+    const result = await getPostsPaginated({
+      limit: Math.min(parseInt(limit) || 20, 50),
+      startAfterDocId: startAfter || null,
+      status,
+    });
+    res.json({
+      success: true,
+      data: result.posts,
+      nextPageToken: result.nextPageToken,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/posts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get reported posts only (paginated)
+app.get('/api/posts/reported', async (req, res) => {
+  try {
+    const { limit = 20, startAfter } = req.query;
+    const result = await getReportedPostsPaginated({
+      limit: Math.min(parseInt(limit) || 20, 50),
+      startAfterDocId: startAfter || null,
+    });
+    res.json({
+      success: true,
+      data: result.posts,
+      nextPageToken: result.nextPageToken,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/posts/reported:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get single post
+app.get('/api/posts/:postId', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const post = await getPostById(postId);
+    if (!post) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
+    }
+    res.json({ success: true, data: post });
+  } catch (error) {
+    console.error('Error in GET /api/posts/:postId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete post (soft delete - status = 'deleted')
+app.delete('/api/posts/:postId', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { hard } = req.query;
+    if (hard === 'true') {
+      await hardDeletePost(postId);
+      return res.json({ success: true, message: 'Post permanently deleted' });
+    }
+    const post = await deletePost(postId);
+    res.json({ success: true, data: post, message: 'Post deleted (hidden from feed)' });
+  } catch (error) {
+    console.error('Error in DELETE /api/posts/:postId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== SURVEYS ====================
+
+// Create survey
+app.post('/api/surveys', async (req, res) => {
+  try {
+    console.log('POST /api/surveys called');
+    const survey = await createSurvey(req.body);
+    res.status(201).json({ success: true, data: survey });
+  } catch (error) {
+    console.error('Error in POST /api/surveys:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Get all surveys
+app.get('/api/surveys', async (req, res) => {
+  try {
+    const { isActive, showOnHomePage } = req.query;
+    const filters = {};
+    if (isActive !== undefined) filters.isActive = isActive === 'true';
+    if (showOnHomePage !== undefined) filters.showOnHomePage = showOnHomePage === 'true';
+    
+    const surveys = await getAllSurveys(filters);
+    res.json({ success: true, count: surveys.length, data: surveys });
+  } catch (error) {
+    console.error('Error in GET /api/surveys:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get active home page survey
+app.get('/api/surveys/active', async (req, res) => {
+  try {
+    const survey = await getActiveHomePageSurvey();
+    if (!survey) {
+      return res.json({ success: true, data: null, message: 'No active survey' });
+    }
+    res.json({ success: true, data: survey });
+  } catch (error) {
+    console.error('Error in GET /api/surveys/active:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get survey by ID
+app.get('/api/surveys/:surveyId', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const survey = await getSurveyById(surveyId);
+    if (!survey) {
+      return res.status(404).json({ success: false, error: 'Survey not found' });
+    }
+    res.json({ success: true, data: survey });
+  } catch (error) {
+    console.error('Error in GET /api/surveys/:surveyId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update survey
+app.put('/api/surveys/:surveyId', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const updatedSurvey = await updateSurvey(surveyId, req.body);
+    res.json({ success: true, data: updatedSurvey });
+  } catch (error) {
+    console.error('Error in PUT /api/surveys/:surveyId:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Delete survey (soft delete)
+app.delete('/api/surveys/:surveyId', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const deletedSurvey = await deleteSurvey(surveyId);
+    res.json({ success: true, data: deletedSurvey, message: 'Survey deactivated' });
+  } catch (error) {
+    console.error('Error in DELETE /api/surveys/:surveyId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Submit survey response
+app.post('/api/surveys/:surveyId/respond', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const { userId, selectedOptionId } = req.body;
+    
+    if (!userId || !selectedOptionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId and selectedOptionId are required',
+      });
+    }
+
+    const response = await submitSurveyResponse(userId, surveyId, selectedOptionId);
+    res.status(201).json({ success: true, data: response });
+  } catch (error) {
+    console.error('Error in POST /api/surveys/:surveyId/respond:', error);
+    const statusCode = error.message.includes('already responded') ? 400 : 500;
+    res.status(statusCode).json({ success: false, error: error.message });
+  }
+});
+
+// Get survey analytics
+app.get('/api/surveys/:surveyId/analytics', async (req, res) => {
+  try {
+    const { surveyId } = req.params;
+    const analytics = await getSurveyAnalytics(surveyId);
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    console.error('Error in GET /api/surveys/:surveyId/analytics:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get user's survey responses
+app.get('/api/users/:userId/survey-responses', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const responses = await getUserSurveyResponses(userId);
+    res.json({ success: true, count: responses.length, data: responses });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/survey-responses:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get user's response to specific survey
+app.get('/api/users/:userId/survey-responses/:surveyId', async (req, res) => {
+  try {
+    const { userId, surveyId } = req.params;
+    const response = await getUserSurveyResponse(userId, surveyId);
+    res.json({ success: true, data: response });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/survey-responses/:surveyId:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

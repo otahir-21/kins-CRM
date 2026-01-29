@@ -120,6 +120,70 @@ export const apiService = {
     return api.get(`/api/users/${userId}/fcm-token`);
   },
   
+  // Surveys
+  createSurvey: (data) => {
+    return api.post('/api/surveys', data);
+  },
+  
+  getAllSurveys: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.isActive !== undefined) params.append('isActive', filters.isActive);
+    if (filters.showOnHomePage !== undefined) params.append('showOnHomePage', filters.showOnHomePage);
+    return api.get(`/api/surveys?${params.toString()}`);
+  },
+  
+  getActiveHomePageSurvey: () => {
+    return api.get('/api/surveys/active');
+  },
+  
+  getSurveyById: (surveyId) => {
+    return api.get(`/api/surveys/${surveyId}`);
+  },
+  
+  updateSurvey: (surveyId, data) => {
+    return api.put(`/api/surveys/${surveyId}`, data);
+  },
+  
+  deleteSurvey: (surveyId) => {
+    return api.delete(`/api/surveys/${surveyId}`);
+  },
+  
+  submitSurveyResponse: (surveyId, userId, selectedOptionId) => {
+    return api.post(`/api/surveys/${surveyId}/respond`, { userId, selectedOptionId });
+  },
+  
+  getSurveyAnalytics: (surveyId) => {
+    return api.get(`/api/surveys/${surveyId}/analytics`);
+  },
+  
+  getUserSurveyResponses: (userId) => {
+    return api.get(`/api/users/${userId}/survey-responses`);
+  },
+  
+  // Posts moderation
+  getPosts: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.append('limit', params.limit);
+    if (params.startAfter) searchParams.append('startAfter', params.startAfter);
+    if (params.status) searchParams.append('status', params.status);
+    return api.get(`/api/posts?${searchParams.toString()}`);
+  },
+  
+  getReportedPosts: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.append('limit', params.limit);
+    if (params.startAfter) searchParams.append('startAfter', params.startAfter);
+    return api.get(`/api/posts/reported?${searchParams.toString()}`);
+  },
+  
+  getPostById: (postId) => {
+    return api.get(`/api/posts/${postId}`);
+  },
+  
+  deletePost: (postId, hard = false) => {
+    return api.delete(`/api/posts/${postId}${hard ? '?hard=true' : ''}`);
+  },
+  
   // Health check
   healthCheck: () => {
     return api.get('/health');

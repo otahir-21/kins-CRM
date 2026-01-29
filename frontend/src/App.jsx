@@ -6,7 +6,10 @@ import Users from './components/Users';
 import UserDetail from './components/UserDetail';
 import Documents from './components/Documents';
 import Interests from './components/Interests';
+import Surveys from './components/Surveys';
+import SurveyAnalytics from './components/SurveyAnalytics';
 import Notifications from './components/Notifications';
+import PostsModeration from './components/PostsModeration';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
@@ -31,6 +34,9 @@ function App() {
           <Route path="/users/:userId/notifications" element={<Notifications />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/interests" element={<Interests />} />
+          <Route path="/surveys" element={<Surveys />} />
+          <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />
+          <Route path="/posts-moderation" element={<PostsModeration />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
