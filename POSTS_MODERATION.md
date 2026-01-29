@@ -1,5 +1,23 @@
 # Post Moderation – Cost-Effective Design
 
+## Firestore index required
+
+The posts query filters by `status` and orders by `createdAt`, so Firestore needs a **composite index**.
+
+**Option A – Use the link from the error (fastest)**  
+When you see `FAILED_PRECONDITION: The query requires an index`, the message includes a URL. Open that URL in your browser → Firebase Console opens with the index pre-filled → click **Create**. The index may take a few minutes to build.
+
+**Option B – Deploy from this repo**  
+1. Install Firebase CLI: `npm i -g firebase-tools`  
+2. Log in: `firebase login`  
+3. In project root: `firebase init firestore` (choose “Use an existing project” → `kins-b4afb`, keep default `firestore.rules` and `firestore.indexes.json`)  
+4. Replace the generated `firestore.indexes.json` with the one in this repo (or merge in the `posts` index).  
+5. Deploy indexes: `firebase deploy --only firestore:indexes`
+
+The index definition is in **`firestore.indexes.json`** (collection `posts`, fields `status` ASC, `createdAt` DESC).
+
+---
+
 ## The problem
 - All users can upload posts.
 - CRM needs to show posts so moderators can delete inappropriate ones.

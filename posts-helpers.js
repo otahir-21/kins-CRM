@@ -16,11 +16,24 @@ async function getPostsPaginated(options = {}) {
   const { limit = 20, startAfterDocId = null, status = 'active' } = options;
 
   try {
-    let query = db
-      .collection(POSTS_COLLECTION)
-      .where('status', '==', status)
-      .orderBy('createdAt', 'desc')
-      .limit(limit + 1);
+    let query;
+
+    const fetchSize = status === 'active' ? Math.max(limit + 1, 50) : limit + 1;
+    if (status === 'active') {
+      // Active tab: include posts with status 'active' OR no status (legacy posts from app)
+      // Firestore can't query "field missing", so we fetch by createdAt and filter in code
+      query = db
+        .collection(POSTS_COLLECTION)
+        .orderBy('createdAt', 'asc')
+        .limit(fetchSize);
+    } else {
+      // Reported / Deleted: filter by status
+      query = db
+        .collection(POSTS_COLLECTION)
+        .where('status', '==', status)
+        .orderBy('createdAt', 'asc')
+        .limit(fetchSize);
+    }
 
     if (startAfterDocId) {
       const lastDoc = await db.collection(POSTS_COLLECTION).doc(startAfterDocId).get();
@@ -30,19 +43,27 @@ async function getPostsPaginated(options = {}) {
     }
 
     const snapshot = await query.get();
-    const posts = [];
-    let hasMore = false;
+    let posts = [];
 
-    snapshot.forEach((doc, index) => {
-      if (index < limit) {
-        posts.push({
-          id: doc.id,
-          ...doc.data(),
-        });
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const docStatus = data.status;
+
+      if (status === 'active') {
+        // Include if no status (legacy) or status === 'active'
+        if (docStatus === undefined || docStatus === null || docStatus === 'active') {
+          posts.push({ id: doc.id, ...data });
+        }
       } else {
-        hasMore = true;
+        posts.push({ id: doc.id, ...data });
       }
     });
+
+    const hasMore = posts.length > limit;
+    if (hasMore) posts = posts.slice(0, limit);
+
+    // Newest-first for display
+    posts.reverse();
 
     const nextPageToken = hasMore && posts.length > 0 ? posts[posts.length - 1].id : null;
 

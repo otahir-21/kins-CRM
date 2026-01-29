@@ -67,9 +67,15 @@ const PostsModeration = () => {
   };
 
   const formatContent = (text) => {
-    if (!text) return '—';
-    return text.length > 120 ? text.slice(0, 120) + '…' : text;
+    if (text == null || text === '') return '—';
+    const s = String(text);
+    return s.length > 120 ? s.slice(0, 120) + '…' : s;
   };
+
+  // Support both app schema (authorName, text, mediaUrl) and legacy (userName, content, imageUrl)
+  const getAuthor = (post) => post.authorName ?? post.userName ?? post.authorId ?? post.userId ?? 'Unknown';
+  const getContent = (post) => post.text ?? post.content ?? '';
+  const getImageUrl = (post) => post.mediaUrl ?? post.thumbnailUrl ?? post.imageUrl;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -134,7 +140,7 @@ const PostsModeration = () => {
                   <div className="flex items-center gap-3 mb-2">
                     <div className="flex items-center gap-2 text-gray-700">
                       <User className="w-4 h-4 flex-shrink-0" />
-                      <span className="font-medium truncate">{post.userName || post.userId || 'Unknown'}</span>
+                      <span className="font-medium truncate">{getAuthor(post)}</span>
                     </div>
                     {post.reportCount > 0 && (
                       <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
@@ -143,22 +149,22 @@ const PostsModeration = () => {
                     )}
                   </div>
                   <p className="text-gray-800 text-sm whitespace-pre-wrap break-words">
-                    {formatContent(post.content)}
+                    {formatContent(getContent(post))}
                   </p>
                   <p className="text-gray-500 text-xs mt-2">
                     {formatFirestoreDateTime(post.createdAt)} • ID: {post.id}
                   </p>
                 </div>
                 <div className="flex items-start gap-2 flex-shrink-0">
-                  {post.imageUrl && (
+                  {getImageUrl(post) && (
                     <a
-                      href={post.imageUrl}
+                      href={getImageUrl(post)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block w-20 h-20 rounded-lg overflow-hidden border border-gray-200"
                     >
                       <img
-                        src={post.imageUrl}
+                        src={getImageUrl(post)}
                         alt="Post"
                         className="w-full h-full object-cover"
                       />
