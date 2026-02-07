@@ -10,6 +10,7 @@ import Surveys from './components/Surveys';
 import SurveyAnalytics from './components/SurveyAnalytics';
 import Notifications from './components/Notifications';
 import PostsModeration from './components/PostsModeration';
+import Onboarding from './components/Onboarding';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
@@ -37,6 +38,7 @@ function App() {
           <Route path="/surveys" element={<Surveys />} />
           <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />
           <Route path="/posts-moderation" element={<PostsModeration />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

@@ -8,7 +8,8 @@ import {
   LogOut,
   Tag,
   ClipboardList,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen
 } from 'lucide-react';
 import { authService } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const Sidebar = () => {
     { path: '/interests', icon: Tag, label: 'Interests' },
     { path: '/surveys', icon: ClipboardList, label: 'Surveys' },
     { path: '/posts-moderation', icon: ShieldCheck, label: 'Posts Moderation' },
+    { path: '/onboarding', icon: BookOpen, label: 'Onboarding' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];

@@ -7,19 +7,21 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": [
-    "crm",
-    "firebase",
-    "firestore",
-    "api"
-  ],
+  "keywords": ["crm", "firebase", "firestore", "api"],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "express": "^4.18.2",
-    "firebase-admin": "^12.0.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "cors": "^2.8.5"
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "firebase-admin": "^12.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "twilio": "^5.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

@@ -160,6 +160,32 @@ export const apiService = {
     return api.get(`/api/users/${userId}/survey-responses`);
   },
   
+  // Onboarding (walkthrough)
+  getOnboardingSteps: (activeOnly = false) => {
+    return api.get(`/api/onboarding?activeOnly=${activeOnly}`);
+  },
+  getOnboardingStepById: (stepId) => {
+    return api.get(`/api/onboarding/${stepId}`);
+  },
+  createOnboardingStep: (data) => {
+    return api.post('/api/onboarding', data);
+  },
+  updateOnboardingStep: (stepId, data) => {
+    return api.put(`/api/onboarding/${stepId}`, data);
+  },
+  deleteOnboardingStep: (stepId) => {
+    return api.delete(`/api/onboarding/${stepId}`);
+  },
+
+  // Upload image to Bunny CDN (returns { url })
+  uploadImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/api/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+
   // Posts moderation
   getPosts: (params = {}) => {
     const searchParams = new URLSearchParams();

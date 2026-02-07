@@ -1,6 +1,72 @@
 const { db, auth, admin } = require('./firebase-config');
 
 /**
+ * Normalize phone to E.164 (e.g. +14155551234). Used as unique user identifier.
+ * @param {string} phone - Phone number (with or without +)
+ * @returns {string} E.164 format
+ */
+function normalizePhoneToE164(phone) {
+  if (!phone || typeof phone !== 'string') throw new Error('Phone number is required');
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 10) throw new Error('Invalid phone number');
+  // E.164: + and digits. Leading 0 → UK (+44); 10 digits → US (+1); 11 starting with 1 → +1; else assume with country code.
+  if (digits.startsWith('0')) return `+44${digits.slice(1)}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return `+${digits}`;
+}
+
+/**
+ * Get user by phone number (phone is the unique identifier; doc ID = E.164 phone).
+ * @param {string} phone - Phone number (any format, will be normalized)
+ * @returns {Promise<Object|null>} User object or null
+ */
+async function getUserByPhone(phone) {
+  try {
+    const e164 = normalizePhoneToE164(phone);
+    const userDoc = await db.collection('users').doc(e164).get();
+    if (!userDoc.exists) return null;
+    return { id: userDoc.id, ...userDoc.data() };
+  } catch (error) {
+    console.error('Error getting user by phone:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new user with phone as unique identifier (doc ID = E.164 phone).
+ * @param {string} phone - Phone number (will be normalized to E.164)
+ * @returns {Promise<Object>} Created user
+ */
+async function createUserByPhone(phone) {
+  try {
+    const e164 = normalizePhoneToE164(phone);
+    const userRef = db.collection('users').doc(e164);
+    const existing = await userRef.get();
+    if (existing.exists) {
+      return { id: existing.id, ...existing.data() };
+    }
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const userData = {
+      phoneNumber: e164,
+      name: null,
+      gender: null,
+      documentUrl: null,
+      interests: [],
+      fcmToken: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await userRef.set(userData);
+    const created = await userRef.get();
+    return { id: created.id, ...created.data() };
+  } catch (error) {
+    console.error('Error creating user by phone:', error);
+    throw error;
+  }
+}
+
+/**
  * Get all users from Firestore
  * @returns {Promise<Array>} Array of user objects
  */
@@ -445,6 +511,9 @@ async function updateUserInterests(userId, interestIds) {
 }
 
 module.exports = {
+  normalizePhoneToE164,
+  getUserByPhone,
+  createUserByPhone,
   getAllUsers,
   getUserById,
   getUserWithAuthData,

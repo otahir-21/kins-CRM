@@ -1,5 +1,8 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const {
   getAllUsers,
   getUserById,
@@ -59,11 +62,36 @@ const {
   getReportedPostsPaginated
 } = require('./posts-helpers');
 
+const {
+  getOnboardingSteps,
+  getOnboardingStepById,
+  createOnboardingStep,
+  updateOnboardingStep,
+  deleteOnboardingStep
+} = require('./onboarding-helpers');
+
+const { uploadToBunnyCDN } = require('./upload-helpers');
+const authRoutes = require('./auth-routes');
+
 const app = express();
+
+// Multer: in-memory storage for uploads (no disk write)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /^image\/(jpeg|png|gif|webp)$/i.test(file.mimetype);
+    if (allowed) cb(null, true);
+    else cb(new Error('Only images (JPEG, PNG, GIF, WebP) are allowed'), false);
+  },
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Auth routes (Twilio Verify + JWT; replaces Firebase Phone Auth)
+app.use('/auth', authRoutes);
 
 // Root endpoint - API information
 app.get('/', (req, res) => {
@@ -75,6 +103,10 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       health: `${baseUrl}/health`,
+      auth: {
+        sendOtp: { method: 'POST', url: `${baseUrl}/auth/send-otp`, body: { phone: '+1234567890' } },
+        verifyOtp: { method: 'POST', url: `${baseUrl}/auth/verify-otp`, body: { phone: '+1234567890', code: '123456' } }
+      },
       users: {
         all: `${baseUrl}/api/users`,
         allComplete: `${baseUrl}/api/users?complete=true`,
@@ -112,6 +144,17 @@ app.get('/', (req, res) => {
         delete: { method: 'DELETE', url: `${baseUrl}/api/surveys/:surveyId` },
         submitResponse: { method: 'POST', url: `${baseUrl}/api/surveys/:surveyId/respond` },
         analytics: `${baseUrl}/api/surveys/:surveyId/analytics`
+      },
+      onboarding: {
+        getSteps: `${baseUrl}/api/onboarding`,
+        getStepsForApp: `${baseUrl}/api/onboarding?activeOnly=true`,
+        getById: `${baseUrl}/api/onboarding/:stepId`,
+        create: { method: 'POST', url: `${baseUrl}/api/onboarding` },
+        update: { method: 'PUT', url: `${baseUrl}/api/onboarding/:stepId` },
+        delete: { method: 'DELETE', url: `${baseUrl}/api/onboarding/:stepId` }
+      },
+      upload: {
+        image: { method: 'POST', url: `${baseUrl}/api/upload/image`, body: 'multipart/form-data, field: image' }
       }
     },
     documentation: 'See README.md for detailed API documentation'
@@ -757,6 +800,98 @@ app.delete('/api/posts/:postId', async (req, res) => {
   }
 });
 
+// ==================== ONBOARDING (Walkthrough) ====================
+
+// Get onboarding steps – app: ?activeOnly=true (default); CRM: ?activeOnly=false for all
+app.get('/api/onboarding', async (req, res) => {
+  try {
+    const activeOnly = req.query.activeOnly !== 'false';
+    const steps = await getOnboardingSteps({ activeOnly });
+    res.json({ success: true, count: steps.length, data: steps });
+  } catch (error) {
+    console.error('Error in GET /api/onboarding:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get single onboarding step
+app.get('/api/onboarding/:stepId', async (req, res) => {
+  try {
+    const { stepId } = req.params;
+    const step = await getOnboardingStepById(stepId);
+    if (!step) return res.status(404).json({ success: false, error: 'Onboarding step not found' });
+    res.json({ success: true, data: step });
+  } catch (error) {
+    console.error('Error in GET /api/onboarding/:stepId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Create onboarding step
+app.post('/api/onboarding', async (req, res) => {
+  try {
+    const step = await createOnboardingStep(req.body);
+    res.status(201).json({ success: true, data: step });
+  } catch (error) {
+    console.error('Error in POST /api/onboarding:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Update onboarding step
+app.put('/api/onboarding/:stepId', async (req, res) => {
+  try {
+    const { stepId } = req.params;
+    const step = await updateOnboardingStep(stepId, req.body);
+    res.json({ success: true, data: step });
+  } catch (error) {
+    console.error('Error in PUT /api/onboarding/:stepId:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Delete onboarding step
+app.delete('/api/onboarding/:stepId', async (req, res) => {
+  try {
+    const { stepId } = req.params;
+    await deleteOnboardingStep(stepId);
+    res.json({ success: true, message: 'Onboarding step deleted' });
+  } catch (error) {
+    console.error('Error in DELETE /api/onboarding/:stepId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== UPLOAD (Bunny CDN) ====================
+
+// GET /api/upload/image → 405 (use POST with multipart form field "image")
+app.get('/api/upload/image', (req, res) => {
+  res.status(405).json({
+    success: false,
+    error: 'Method not allowed. Use POST with multipart/form-data and field name: image',
+    uploadEndpoint: '/api/upload/image',
+    method: 'POST',
+  });
+});
+
+// Upload image to Bunny CDN; returns public URL for use in onboarding (or elsewhere)
+app.post('/api/upload/image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: 'No image file provided. Use field name: image' });
+    }
+    const ext = (req.file.originalname && req.file.originalname.split('.').pop()) || 'jpg';
+    const safeExt = /^[a-z0-9]+$/i.test(ext) ? ext : 'jpg';
+    const filename = `onboarding-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
+    const contentType = req.file.mimetype || 'application/octet-stream';
+    const { url } = await uploadToBunnyCDN(req.file.buffer, filename, 'onboarding', contentType);
+    res.json({ success: true, url });
+  } catch (error) {
+    console.error('Error in POST /api/upload/image:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== SURVEYS ====================
 
 // Create survey
@@ -913,7 +1048,9 @@ app.use((req, res) => {
   res.status(404).json({ 
     success: false, 
     error: 'Endpoint not found',
-    path: req.path 
+    method: req.method,
+    path: req.path,
+    hint: 'Check API base URL (e.g. VITE_API_URL) and restart the backend after code changes.',
   });
 });
 
