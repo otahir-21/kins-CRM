@@ -1,6 +1,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');
 const {
@@ -1042,6 +1044,17 @@ app.use((err, req, res, next) => {
     message: err.message 
   });
 });
+
+// Serve frontend (when built: frontend/dist) so one deployment = API + CRM UI
+const frontendDist = path.join(__dirname, 'frontend', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'), (err) => { if (err) next(); });
+  });
+}
 
 // 404 handler
 app.use((req, res) => {

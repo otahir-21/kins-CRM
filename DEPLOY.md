@@ -6,7 +6,21 @@ Deploy the backend so you can test the auth API (and the rest) from a public URL
 
 ---
 
-## What you need before deploying
+## One deployment = API + frontend (recommended)
+
+One project = backend (Node/Express) + frontend (React in `frontend/`). One Vercel deployment serves both. Build: `npm install && npm run build` (builds frontend into `frontend/dist`). Runtime: API at `/api/*`, auth at `/auth/*`; all other routes serve the CRM UI.
+
+- _Obsolete:_ Backend (API) at repo root — what you deployed. The root URL returns that JSON as the API “index”.
+- After deploy, open your URL (e.g. **https://kins-crm.vercel.app/**) for the CRM dashboard; `/api/*` and `/health` work as before.
+
+### Local development
+
+- **Backend only:** `npm run dev` (API at http://localhost:3000).
+- **Frontend + API together:** `npm run build` then `npm start` — open http://localhost:3000 for both. If you deploy frontend elsewhere, set **VITE_API_URL** to your API URL.
+
+---
+
+## What you need before deploying (backend)
 
 1. **Environment variables** (set these on your host):
    - **Firebase:** `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_SERVICE_ACCOUNT` (JSON string) or upload `serviceAccountKey.json` if the host supports secrets files
