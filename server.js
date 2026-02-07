@@ -95,8 +95,8 @@ app.use(express.json());
 // Auth routes (Twilio Verify + JWT; replaces Firebase Phone Auth)
 app.use('/auth', authRoutes);
 
-// Root endpoint - API information
-app.get('/', (req, res) => {
+// API information (moved from / so GET / can serve the CRM frontend)
+app.get('/api-info', (req, res) => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   res.json({
     success: true,
