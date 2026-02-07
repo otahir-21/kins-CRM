@@ -1054,13 +1054,15 @@ app.use((req, res) => {
   });
 });
 
-// Start server
+// Start server (skip on Vercel — they attach the handler)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 KINS CRM API Server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
-  console.log(`📈 Statistics: http://localhost:${PORT}/api/statistics`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 KINS CRM API Server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
+    console.log(`📈 Statistics: http://localhost:${PORT}/api/statistics`);
+  });
+}
 
 module.exports = app;

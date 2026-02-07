@@ -1,29 +1,30 @@
 const admin = require('firebase-admin');
 require('dotenv').config();
 
-// Load service account from environment or file
+// Load service account from environment or file (on Vercel you must set FIREBASE_SERVICE_ACCOUNT)
 let serviceAccount;
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // Parse from environment variable
   try {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } catch (error) {
-    console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', error);
-    process.exit(1);
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+    serviceAccount = JSON.parse(raw);
+  } catch (e) {
+    const msg = 'Invalid FIREBASE_SERVICE_ACCOUNT. On Vercel: paste the full JSON (one line) in Project → Settings → Environment Variables.';
+    console.error(msg, e.message);
+    throw new Error(msg);
   }
 } else {
-  // Load from file
   try {
     serviceAccount = require('./serviceAccountKey.json');
-  } catch (error) {
-    console.error('Error loading serviceAccountKey.json:', error);
-    console.error('Please ensure serviceAccountKey.json exists or set FIREBASE_SERVICE_ACCOUNT env variable');
-    process.exit(1);
+  } catch (e) {
+    const msg = process.env.VERCEL
+      ? 'On Vercel set FIREBASE_SERVICE_ACCOUNT in Project → Settings → Environment Variables (full service account JSON, one line).'
+      : 'Missing Firebase credentials: add serviceAccountKey.json in project root or set FIREBASE_SERVICE_ACCOUNT env var.';
+    console.error(msg);
+    throw new Error(msg);
   }
 }
 
-// Initialize Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   projectId: process.env.FIREBASE_PROJECT_ID || 'kins-b4afb',

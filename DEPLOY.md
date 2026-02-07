@@ -39,7 +39,57 @@ Deploy the backend so you can test the auth API (and the rest) from a public URL
 
 ---
 
-## Option 2: Render
+## Option 2: Vercel
+
+**Where to add environment variables**
+
+1. Go to [vercel.com](https://vercel.com) → sign in → open your project (or **Add New** → **Project** and import your GitHub repo).
+2. Open **Settings** (top tab) → **Environment Variables** in the left sidebar.
+3. Add each variable:
+   - **Key** = name (e.g. `TWILIO_ACCOUNT_SID`)
+   - **Value** = your secret (never commit real values)
+   - **Environment** = choose **Production** (and **Preview** / **Development** if you use those).
+4. Click **Save**. Redeploy the project (Deployments → ⋮ on latest → Redeploy) so the new variables are used.
+
+**Variables to add**
+
+| Key | Example / notes |
+|-----|------------------|
+| `FIREBASE_PROJECT_ID` | `kins-b4afb`|
+| `FIREBASE_STORAGE_BUCKET` | `kins-b4afb.firebasestorage.app` |
+| `FIREBASE_SERVICE_ACCOUNT` | Full JSON of your Firebase service account key (paste as **one line**) |
+| `TWILIO_ACCOUNT_SID` | Your Twilio Account SID |
+| `TWILIO_AUTH_TOKEN` | Your Twilio Auth Token |
+| `TWILIO_VERIFY_SERVICE_SID` | Your Verify service SID (starts with `VA...`) |
+| `JWT_SECRET` | Long random string (min 32 characters) |
+| `BUNNY_STORAGE_ZONE` | (optional) If you use onboarding uploads |
+| `BUNNY_ACCESS_KEY` | (optional) |
+| `BUNNY_CDN_URL` | (optional) |
+
+**Firebase JSON:** In Firebase Console → Project Settings → Service Accounts → Generate new private key. Copy the whole JSON, then paste it as the value of `FIREBASE_SERVICE_ACCOUNT` (one line is fine).
+
+After deploy, your API URL will be like `https://your-project.vercel.app`. Test auth with:
+
+```bash
+BASE_URL=https://your-project.vercel.app node test-auth-api.js +441234567890
+BASE_URL=https://your-project.vercel.app node test-auth-api.js +441234567890 123456
+```
+
+**If you get 500 / "This Serverless Function has crashed"**
+
+1. **Set `FIREBASE_SERVICE_ACCOUNT`**  
+   The app needs this on Vercel (there is no `serviceAccountKey.json` in deployment). In **Settings → Environment Variables** add:
+   - **Key:** `FIREBASE_SERVICE_ACCOUNT`
+   - **Value:** Paste the **entire** contents of your Firebase service account JSON as **one line** (no line breaks). From Firebase Console → Project Settings → Service Accounts → Generate new private key, then copy the full JSON.
+
+2. **Check the logs**  
+   In Vercel: open your project → **Deployments** → click the latest deployment → **Functions** tab, or **Logs** / **Runtime Logs**. The error message will say e.g. "On Vercel set FIREBASE_SERVICE_ACCOUNT..." if that variable is missing.
+
+3. **Redeploy** after adding or changing environment variables (Deployments → ⋮ → Redeploy).
+
+---
+
+## Option 3: Render (same env vars as above)
 
 1. Go to [render.com](https://render.com) and sign in (e.g. GitHub).
 2. **New** → **Web Service** → connect your GitHub repo (`Kins-CRM`).
@@ -57,7 +107,7 @@ Deploy the backend so you can test the auth API (and the rest) from a public URL
 
 ---
 
-## Option 3: Fly.io
+## Option 4: Fly.io
 
 1. Install [flyctl](https://fly.io/docs/hands-on/install-flyctl/) and log in: `fly auth login`.
 2. In your project root:
