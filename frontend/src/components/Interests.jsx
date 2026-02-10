@@ -69,7 +69,8 @@ const Interests = () => {
       setFormData({ name: '' });
       fetchInterests();
     } catch (error) {
-      alert(error.response?.data?.error || 'Error creating interest');
+      const msg = error.response?.data?.error || error.response?.data?.message || error.message || 'Error creating interest. Check API and MongoDB connection.';
+      alert(msg);
     }
   };
 

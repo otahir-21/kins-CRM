@@ -1,84 +1,50 @@
-const { createInterest } = require('./interests-helpers');
+require('dotenv').config();
+const mongoose = require('mongoose');
+const Interest = require('./models/Interest');
+const { connectMongo } = require('./config/db');
 
-// Dummy interests for mother & child/parenting app
 const interests = [
-  // Parenting & Childcare
-  'Newborn Care',
-  'Toddler Development',
-  'Child Nutrition',
-  'Breastfeeding',
-  'Baby Sleep',
-  'Potty Training',
-  'Child Safety',
-  
-  // Health & Wellness
-  'Pregnancy Health',
-  'Postpartum Care',
-  'Baby Health',
-  'Mental Health',
-  'Fitness & Exercise',
-  'Yoga & Meditation',
-  
-  // Products & Shopping
-  'Baby Products',
-  'Maternity Fashion',
-  'Baby Gear',
-  'Toys & Games',
-  'Organic Products',
-  'Eco-Friendly Living',
-  
-  // Education & Learning
-  'Early Education',
-  'Reading & Books',
-  'STEM Learning',
-  'Language Development',
-  'Homeschooling',
-  
-  // Lifestyle
-  'Family Travel',
-  'Meal Planning',
-  'Home Organization',
-  'Budgeting & Finance',
-  'Work-Life Balance',
-  'Self-Care',
-  
-  // Community & Support
-  'Parenting Support',
-  'Mom Groups',
-  'Expert Advice',
+  'Newborn Care', 'Toddler Development', 'Child Nutrition', 'Breastfeeding', 'Baby Sleep',
+  'Potty Training', 'Child Safety', 'Pregnancy Health', 'Postpartum Care', 'Baby Health',
+  'Mental Health', 'Fitness & Exercise', 'Yoga & Meditation', 'Baby Products', 'Maternity Fashion',
+  'Baby Gear', 'Toys & Games', 'Organic Products', 'Eco-Friendly Living', 'Early Education',
+  'Reading & Books', 'STEM Learning', 'Language Development', 'Homeschooling', 'Family Travel',
+  'Meal Planning', 'Home Organization', 'Budgeting & Finance', 'Work-Life Balance', 'Self-Care',
+  'Parenting Support', 'Mom Groups', 'Expert Advice',
 ];
 
 async function seedInterests() {
-  console.log('🌱 Starting to seed interests...\n');
-  
+  console.log('🌱 Seeding interests (MongoDB)...\n');
+  await connectMongo();
+
   let successCount = 0;
   let errorCount = 0;
-  
-  for (const interestName of interests) {
+
+  for (const name of interests) {
     try {
-      const interest = await createInterest({ name: interestName });
-      console.log(`✅ Created: ${interest.name} (ID: ${interest.id})`);
+      const nameNormalized = name.trim().toLowerCase();
+      const existing = await Interest.findOne({ nameNormalized });
+      if (existing) {
+        console.log(`⏭️  Skip (exists): ${name}`);
+        successCount++;
+        continue;
+      }
+      const interest = await Interest.create({ name: name.trim() });
+      console.log(`✅ Created: ${interest.name} (ID: ${interest._id})`);
       successCount++;
-    } catch (error) {
-      console.error(`❌ Error creating "${interestName}":`, error.message);
+    } catch (err) {
+      console.error(`❌ "${name}":`, err.message);
       errorCount++;
     }
   }
-  
-  console.log(`\n📊 Summary:`);
-  console.log(`   ✅ Successfully created: ${successCount}`);
-  console.log(`   ❌ Errors: ${errorCount}`);
-  console.log(`   📝 Total interests: ${interests.length}`);
-  console.log('\n✨ Seeding complete!');
+
+  console.log(`\n📊 Summary: ${successCount} ok, ${errorCount} errors, ${interests.length} total`);
+  await mongoose.disconnect();
 }
 
-// Run the seeding
 seedInterests()
-  .then(() => {
-    console.log('\n🎉 All done!');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('\n💥 Fatal error:', error);
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err);
     process.exit(1);
   });

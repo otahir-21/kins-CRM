@@ -1,22 +1,19 @@
 # Vercel Environment Variables — What to Add
 
-You have **Firebase** already. Add the rest so **auth (Send OTP / Verify OTP)** and the rest of the API work.
+**Firebase has been removed.** The app uses **MongoDB** and **JWT** only. See **VERCEL_DEPLOY.md** for full deployment steps.
 
 ---
 
-## Checklist
-
-### ✅ Firebase (you have these)
+## Required (must add in Vercel)
 
 | Variable | Example / notes |
 |----------|------------------|
-| `FIREBASE_PROJECT_ID` | `kins-b4afb` |
-| `FIREBASE_STORAGE_BUCKET` | `kins-b4afb.firebasestorage.app` |
-| `FIREBASE_SERVICE_ACCOUNT` | **Full JSON** of your Firebase service account key (one line). From Firebase Console → Project Settings → Service Accounts → Generate new private key. Copy the entire JSON and paste as the value. |
+| **MONGODB_URI** | Atlas: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/kins-crm?retryWrites=true&w=majority&appName=Kins`. Must include database name in path. |
+| **JWT_SECRET** | Long random string, **at least 32 characters** (e.g. `openssl rand -base64 32`). |
 
 ---
 
-### ⚠️ Required for Send OTP / Verify OTP (add these)
+### Optional: Send OTP / Verify OTP (Twilio)
 
 Without these, **Send OTP** and **Verify OTP** will fail.
 

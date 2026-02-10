@@ -16,11 +16,16 @@ function toInterestDoc(i) {
  * GET /interests - return all active interests sorted by name
  */
 async function list(req, res) {
-  const activeOnly = req.query.active !== 'false';
-  const filter = activeOnly ? { isActive: true } : {};
-  const interests = await Interest.find(filter).sort({ name: 1 }).lean();
-  const list = interests.map(toInterestDoc);
-  return res.status(200).json({ success: true, interests: list, data: list });
+  try {
+    const activeOnly = req.query.active !== 'false';
+    const filter = activeOnly ? { isActive: true } : {};
+    const interests = await Interest.find(filter).sort({ name: 1 }).lean();
+    const list = interests.map(toInterestDoc);
+    return res.status(200).json({ success: true, interests: list, data: list });
+  } catch (err) {
+    console.error('GET /interests list error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to load interests.' });
+  }
 }
 
 /**
@@ -28,22 +33,28 @@ async function list(req, res) {
  * Body: { "name": "Sleep" }
  */
 async function create(req, res) {
-  const { name } = req.body;
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ success: false, error: 'name is required.' });
+  try {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'name is required.' });
+    }
+    const trimmed = name.trim();
+    const nameNormalized = trimmed.toLowerCase();
+    const existing = await Interest.findOne({ nameNormalized });
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'An interest with this name already exists.' });
+    }
+    const interest = await Interest.create({ name: trimmed });
+    return res.status(201).json({
+      success: true,
+      interest: toInterestDoc(interest),
+      data: toInterestDoc(interest),
+    });
+  } catch (err) {
+    console.error('POST /interests create error:', err);
+    const message = err.code === 11000 ? 'An interest with this name already exists.' : (err.message || 'Failed to create interest.');
+    return res.status(500).json({ success: false, error: message });
   }
-  const trimmed = name.trim();
-  const nameNormalized = trimmed.toLowerCase();
-  const existing = await Interest.findOne({ nameNormalized });
-  if (existing) {
-    return res.status(409).json({ success: false, error: 'An interest with this name already exists.' });
-  }
-  const interest = await Interest.create({ name: trimmed });
-  return res.status(201).json({
-    success: true,
-    interest: toInterestDoc(interest),
-    data: toInterestDoc(interest),
-  });
 }
 
 /**
