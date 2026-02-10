@@ -16,21 +16,8 @@ const {
   getUsersByGender,
   getUsersWithDocuments,
   updateUser,
-  getUserStatistics,
-  getUserInterests,
-  addUserInterest,
-  removeUserInterest,
-  updateUserInterests
+  getUserStatistics
 } = require('./data-helpers');
-
-const {
-  createInterest,
-  getAllInterests,
-  getInterestById,
-  updateInterest,
-  deleteInterest,
-  hardDeleteInterest
-} = require('./interests-helpers');
 
 const {
   sendNotification,
@@ -74,6 +61,13 @@ const {
 
 const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
+const { connectMongo } = require('./config/db');
+const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
+const v1Routes = require('./routes/v1');
+
+if (process.env.MONGODB_URI) {
+  connectMongo().catch((err) => console.error('MongoDB connection failed:', err.message));
+}
 
 const app = express();
 
@@ -92,8 +86,15 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 
-// Auth routes (Twilio Verify + JWT; replaces Firebase Phone Auth)
+// Auth routes (Twilio Verify + JWT)
 app.use('/auth', authRoutes);
+
+// Interests master list (MongoDB, no Firebase)
+app.use('/interests', interestsMongoRoutes.dashboard);
+app.use('/api/interests', interestsMongoRoutes.dashboard);
+
+// API v1: JWT auth, profile, interests — use this for mobile app (MongoDB only)
+app.use('/api/v1', v1Routes);
 
 // API information (moved from / so GET / can serve the CRM frontend)
 app.get('/api-info', (req, res) => {
@@ -125,17 +126,19 @@ app.get('/api-info', (req, res) => {
         url: `${baseUrl}/api/users/:userId`
       },
       interests: {
-        create: { method: 'POST', url: `${baseUrl}/api/interests` },
-        getAll: `${baseUrl}/api/interests`,
-        getById: `${baseUrl}/api/interests/:interestId`,
-        update: { method: 'PUT', url: `${baseUrl}/api/interests/:interestId` },
-        delete: { method: 'DELETE', url: `${baseUrl}/api/interests/:interestId` }
+        getAll: `${baseUrl}/interests`,
+        create: { method: 'POST', url: `${baseUrl}/interests`, body: { name: 'Sleep' } },
+        update: { method: 'PUT', url: `${baseUrl}/interests/:id` },
+        delete: { method: 'DELETE', url: `${baseUrl}/interests/:id` }
       },
-      userInterests: {
-        getUserInterests: `${baseUrl}/api/users/:userId/interests`,
-        addInterest: { method: 'POST', url: `${baseUrl}/api/users/:userId/interests` },
-        removeInterest: { method: 'DELETE', url: `${baseUrl}/api/users/:userId/interests/:interestId` },
-        updateInterests: { method: 'PUT', url: `${baseUrl}/api/users/:userId/interests` }
+      v1: {
+        base: `${baseUrl}/api/v1`,
+        authLogin: { method: 'POST', url: `${baseUrl}/api/v1/auth/login` },
+        me: { method: 'GET', url: `${baseUrl}/api/v1/me` },
+        meAbout: { method: 'PUT', url: `${baseUrl}/api/v1/me/about` },
+        meInterests: { method: 'GET', url: `${baseUrl}/api/v1/me/interests` },
+        meInterestsSet: { method: 'POST', url: `${baseUrl}/api/v1/me/interests` },
+        interests: `${baseUrl}/api/v1/interests`
       },
       surveys: {
         create: { method: 'POST', url: `${baseUrl}/api/surveys` },
@@ -307,192 +310,6 @@ app.put('/api/users/:userId', async (req, res) => {
     res.json({ success: true, data: updatedUser });
   } catch (error) {
     console.error('Error in PUT /api/users/:userId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ==================== INTERESTS CRUD ====================
-
-// Create interest
-app.post('/api/interests', async (req, res) => {
-  try {
-    console.log('POST /api/interests called with body:', req.body);
-    const { name } = req.body;
-    
-    if (!name || name.trim() === '') {
-      return res.status(400).json({ success: false, error: 'Interest name is required' });
-    }
-
-    const interest = await createInterest({ name });
-    console.log('Interest created successfully:', interest.id);
-    res.status(201).json({ success: true, data: interest });
-  } catch (error) {
-    console.error('Error in POST /api/interests:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get all interests
-app.get('/api/interests', async (req, res) => {
-  try {
-    const { isActive, limit } = req.query;
-    
-    const filters = {};
-    if (isActive !== undefined) {
-      filters.isActive = isActive === 'true';
-    }
-    if (limit) {
-      filters.limit = parseInt(limit);
-    }
-
-    const interests = await getAllInterests(filters);
-    res.json({ success: true, count: interests.length, data: interests });
-  } catch (error) {
-    console.error('Error in GET /api/interests:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get interest by ID
-app.get('/api/interests/:interestId', async (req, res) => {
-  try {
-    const { interestId } = req.params;
-    const interest = await getInterestById(interestId);
-    
-    if (!interest) {
-      return res.status(404).json({ success: false, error: 'Interest not found' });
-    }
-    
-    res.json({ success: true, data: interest });
-  } catch (error) {
-    console.error('Error in GET /api/interests/:interestId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Update interest
-app.put('/api/interests/:interestId', async (req, res) => {
-  try {
-    const { interestId } = req.params;
-    const updateData = req.body;
-    
-    const updatedInterest = await updateInterest(interestId, updateData);
-    res.json({ success: true, data: updatedInterest });
-  } catch (error) {
-    console.error('Error in PUT /api/interests/:interestId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Delete interest (soft delete)
-app.delete('/api/interests/:interestId', async (req, res) => {
-  try {
-    const { interestId } = req.params;
-    const { hard } = req.query;
-    
-    if (hard === 'true') {
-      await hardDeleteInterest(interestId);
-      res.json({ success: true, message: 'Interest permanently deleted' });
-    } else {
-      const deletedInterest = await deleteInterest(interestId);
-      res.json({ success: true, data: deletedInterest, message: 'Interest deactivated' });
-    }
-  } catch (error) {
-    console.error('Error in DELETE /api/interests/:interestId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// ==================== USER INTERESTS ====================
-
-// Get user's interests
-app.get('/api/users/:userId/interests', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const interestIds = await getUserInterests(userId);
-    
-    // Optionally fetch full interest details
-    const { details } = req.query;
-    if (details === 'true') {
-      const interests = [];
-      for (const interestId of interestIds) {
-        const interest = await getInterestById(interestId);
-        if (interest) {
-          interests.push(interest);
-        }
-      }
-      return res.json({ success: true, count: interests.length, data: interests });
-    }
-    
-    res.json({ success: true, count: interestIds.length, data: interestIds });
-  } catch (error) {
-    console.error('Error in GET /api/users/:userId/interests:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Add interest to user
-app.post('/api/users/:userId/interests', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { interestId } = req.body;
-    
-    if (!interestId) {
-      return res.status(400).json({ success: false, error: 'Interest ID is required' });
-    }
-
-    // Verify interest exists
-    const interest = await getInterestById(interestId);
-    if (!interest || !interest.isActive) {
-      return res.status(404).json({ success: false, error: 'Interest not found or inactive' });
-    }
-
-    const updatedUser = await addUserInterest(userId, interestId);
-    res.json({ success: true, data: updatedUser });
-  } catch (error) {
-    console.error('Error in POST /api/users/:userId/interests:', error);
-    const statusCode = error.message.includes('Maximum') || error.message.includes('already') ? 400 : 500;
-    res.status(statusCode).json({ success: false, error: error.message });
-  }
-});
-
-// Remove interest from user
-app.delete('/api/users/:userId/interests/:interestId', async (req, res) => {
-  try {
-    const { userId, interestId } = req.params;
-    const updatedUser = await removeUserInterest(userId, interestId);
-    res.json({ success: true, data: updatedUser });
-  } catch (error) {
-    console.error('Error in DELETE /api/users/:userId/interests/:interestId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Update user's interests (bulk)
-app.put('/api/users/:userId/interests', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { interestIds } = req.body;
-    
-    if (!Array.isArray(interestIds)) {
-      return res.status(400).json({ success: false, error: 'Interest IDs must be an array' });
-    }
-
-    // Verify all interests exist and are active
-    for (const interestId of interestIds) {
-      const interest = await getInterestById(interestId);
-      if (!interest || !interest.isActive) {
-        return res.status(400).json({ 
-          success: false, 
-          error: `Interest ${interestId} not found or inactive` 
-        });
-      }
-    }
-
-    const updatedUser = await updateUserInterests(userId, interestIds);
-    res.json({ success: true, data: updatedUser });
-  } catch (error) {
-    console.error('Error in PUT /api/users/:userId/interests:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
