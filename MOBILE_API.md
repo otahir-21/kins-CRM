@@ -7,7 +7,7 @@ Use this **base URL** and these **paths** in your Cursor mobile app. All data is
 ## Base URL
 
 - **Local:** `http://localhost:3000`
-- **Production:** Your deployed backend root (e.g. `https://your-app.vercel.app`)
+- **Production:** `https://kins-crm.vercel.app` (Vercel domain)
 
 **API v1 prefix:** append `/api/v1` to the base URL.
 
@@ -16,10 +16,10 @@ Use this **base URL** and these **paths** in your Cursor mobile app. All data is
 | Environment | Base URL (use this in the app) |
 |-------------|---------------------------------|
 | Local       | `http://localhost:3000/api/v1`  |
-| Production  | `https://YOUR_DOMAIN/api/v1`   |
+| Production  | `https://kins-crm.vercel.app/api/v1` |
 
-Example: if your backend is at `https://kins-api.vercel.app`, use  
-**`https://kins-api.vercel.app/api/v1`** as the base URL.
+**Production base URL for Cursor mobile app:**  
+**`https://kins-crm.vercel.app/api/v1`**
 
 ---
 
@@ -43,24 +43,20 @@ All paths below are relative to **`/api/v1`**.
 
 ## Full URLs to pass to Cursor mobile app
 
-Replace `BASE_URL` with your actual backend root (e.g. `https://your-app.vercel.app`).
+**Production base:** `https://kins-crm.vercel.app/api/v1`
+
+**Concrete endpoints (production):**
 
 ```
-BASE_URL/api/v1
-```
-
-**Concrete endpoints:**
-
-```
-POST   BASE_URL/api/v1/auth/login
-GET    BASE_URL/api/v1/me
-PUT    BASE_URL/api/v1/me/about
-GET    BASE_URL/api/v1/me/interests
-POST   BASE_URL/api/v1/me/interests
-GET    BASE_URL/api/v1/interests
-POST   BASE_URL/api/v1/interests
-PUT    BASE_URL/api/v1/interests/:id
-DELETE BASE_URL/api/v1/interests/:id
+POST   https://kins-crm.vercel.app/api/v1/auth/login
+GET    https://kins-crm.vercel.app/api/v1/me
+PUT    https://kins-crm.vercel.app/api/v1/me/about
+GET    https://kins-crm.vercel.app/api/v1/me/interests
+POST   https://kins-crm.vercel.app/api/v1/me/interests
+GET    https://kins-crm.vercel.app/api/v1/interests
+POST   https://kins-crm.vercel.app/api/v1/interests
+PUT    https://kins-crm.vercel.app/api/v1/interests/:id
+DELETE https://kins-crm.vercel.app/api/v1/interests/:id
 ```
 
 **Auth header for protected routes:**  
@@ -71,7 +67,7 @@ DELETE BASE_URL/api/v1/interests/:id
 
 ## Quick reference
 
-- **Base URL for mobile:** `{BACKEND_ROOT}/api/v1`
-- **Login:** `POST {BASE}/auth/login` → get `token` and `user`
+- **Production base URL for mobile:** `https://kins-crm.vercel.app/api/v1`
+- **Login:** `POST https://kins-crm.vercel.app/api/v1/auth/login` → get `token` and `user`
 - **Protected requests:** header `Authorization: Bearer {token}`
 - **Docs:** See `API_V1.md` for request/response bodies and validation.

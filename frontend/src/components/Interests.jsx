@@ -7,6 +7,7 @@ const Interests = () => {
   const [interests, setInterests] = useState([]);
   const [filteredInterests, setFilteredInterests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -25,11 +26,16 @@ const Interests = () => {
   const fetchInterests = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await apiService.getAllInterests();
-      setInterests(response.data.data || []);
-      setFilteredInterests(response.data.data || []);
-    } catch (error) {
-      console.error('Error fetching interests:', error);
+      const list = response.data?.data ?? response.data?.interests ?? [];
+      setInterests(Array.isArray(list) ? list : []);
+      setFilteredInterests(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error('Error fetching interests:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load interests.');
+      setInterests([]);
+      setFilteredInterests([]);
     } finally {
       setLoading(false);
     }
@@ -111,6 +117,23 @@ const Interests = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200 max-w-md text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <p className="text-sm text-gray-500 mb-4">Check that the API is running and MONGODB_URI is set in production.</p>
+          <button
+            onClick={() => fetchInterests()}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
