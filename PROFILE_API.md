@@ -78,10 +78,14 @@ curl -X GET "https://kins-crm.vercel.app/api/v1/me" \
 **Updatable Fields:**
 - `name` (string): Full name
 - `username` (string): Unique username
+- `email` (string): Email address
+- `phoneNumber` (string): Phone number
 - `bio` (string): User biography/description
-- `status` (string): User status
+- `status` (string): User status (e.g., "Working Mum", "New Mom")
 - `gender` (string): Gender (e.g., "male", "female", "other")
 - `dateOfBirth` (string): Date in format `YYYY-MM-DD`
+- `country` (string): Country of residence
+- `city` (string): City of residence
 - `profilePictureUrl` (string): URL to profile picture
 - `documentUrl` (string): URL to verification document
 
@@ -93,9 +97,13 @@ curl -X PUT "https://kins-crm.vercel.app/api/v1/me/about" \
   -d '{
     "name": "John Doe",
     "username": "johndoe",
+    "email": "john@example.com",
+    "phoneNumber": "+1234567890",
     "bio": "Software developer passionate about tech",
     "gender": "male",
     "dateOfBirth": "1990-01-15",
+    "country": "United States",
+    "city": "New York",
     "profilePictureUrl": "https://example.com/avatar.jpg"
   }'
 ```
@@ -447,10 +455,14 @@ await fetch('https://kins-crm.vercel.app/api/v1/me/about', {
 |-------|------|--------|----------|-------|
 | `name` | string | Any | No | Trimmed, can be empty |
 | `username` | string | Alphanumeric | No | Should be unique (not enforced yet) |
+| `email` | string | Email | No | Email address |
+| `phoneNumber` | string | Phone | No | Phone number with country code |
 | `bio` | string | Any | No | User description |
-| `status` | string | Any | No | User status message |
+| `status` | string | Any | No | User status (e.g., "Working Mum") |
 | `gender` | string | Any | No | Suggested: "male", "female", "other" |
 | `dateOfBirth` | string | YYYY-MM-DD | No | ISO date format |
+| `country` | string | Any | No | Country of residence |
+| `city` | string | Any | No | City of residence |
 | `profilePictureUrl` | string | URL | No | Full URL to image |
 | `documentUrl` | string | URL | No | For verification documents |
 
