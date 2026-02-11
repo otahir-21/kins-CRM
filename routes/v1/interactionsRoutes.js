@@ -19,6 +19,11 @@ const {
   getPostShares,
   incrementView,
 } = require('../../controllers/v1/sharesController');
+const {
+  voteOnPoll,
+  getPollResults,
+  removeVote,
+} = require('../../controllers/v1/pollsController');
 
 const router = express.Router();
 
@@ -53,5 +58,10 @@ router.get('/posts/:postId/shares', getPostShares);
 
 // ===== VIEWS =====
 router.post('/posts/:postId/view', incrementView);
+
+// ===== POLLS =====
+router.post('/posts/:postId/vote', voteOnPoll);
+router.get('/posts/:postId/poll', getPollResults);
+router.delete('/posts/:postId/vote', removeVote);
 
 module.exports = router;
