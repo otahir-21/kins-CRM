@@ -36,7 +36,7 @@ async function getFeed(req, res) {
       _id: { $in: postIds },
       isActive: true,
     })
-      .select('_id userId type content media poll interests likesCount commentsCount createdAt')
+      .select('_id userId type content media poll interests likesCount commentsCount sharesCount viewsCount createdAt')
       .populate('userId', 'name username profilePictureUrl')
       .populate('interests', 'name')
       .lean();

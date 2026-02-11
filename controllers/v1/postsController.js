@@ -111,6 +111,8 @@ async function createPost(req, res) {
         interests: post.interests,
         likesCount: post.likesCount,
         commentsCount: post.commentsCount,
+        sharesCount: post.sharesCount,
+        viewsCount: post.viewsCount,
         createdAt: post.createdAt,
       },
     });
