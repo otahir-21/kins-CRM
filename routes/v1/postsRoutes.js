@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { createPost, getPost, deletePost } = require('../../controllers/v1/postsController');
+const { createPost, getPost, deletePost, getMyPosts } = require('../../controllers/v1/postsController');
 
 const router = express.Router();
 
@@ -27,6 +27,9 @@ router.use(verifyJwt);
 
 // Create post (with optional media upload)
 router.post('/', upload.array('media', 10), createPost);
+
+// Get my posts (must come before /:id to avoid matching 'my' as an id)
+router.get('/my', getMyPosts);
 
 // Get single post
 router.get('/:id', getPost);

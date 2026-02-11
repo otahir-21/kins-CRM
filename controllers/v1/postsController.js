@@ -183,4 +183,45 @@ async function deletePost(req, res) {
   }
 }
 
-module.exports = { createPost, getPost, deletePost };
+/**
+ * Get current user's posts (paginated).
+ * GET /api/v1/posts/my
+ */
+async function getMyPosts(req, res) {
+  try {
+    const userId = req.userId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    // Get user's posts
+    const posts = await Post.find({
+      userId,
+      isActive: true,
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'name username profilePictureUrl')
+      .populate('interests', 'name')
+      .lean();
+
+    const total = await Post.countDocuments({ userId, isActive: true });
+
+    return res.status(200).json({
+      success: true,
+      posts,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + posts.length < total,
+      },
+    });
+  } catch (err) {
+    console.error('GET /posts/my error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch posts.' });
+  }
+}
+
+module.exports = { createPost, getPost, deletePost, getMyPosts };
