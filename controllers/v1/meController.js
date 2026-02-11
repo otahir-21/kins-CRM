@@ -3,7 +3,7 @@ const User = require('../../models/User');
 const Interest = require('../../models/Interest');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 
-const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl'];
+const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
 
 function toUserResponse(user) {
   if (!user) return null;
@@ -22,6 +22,8 @@ function toUserResponse(user) {
     gender: u.gender ?? null,
     dateOfBirth: u.dateOfBirth ?? null,
     documentUrl: u.documentUrl ?? null,
+    country: u.country ?? null,
+    city: u.city ?? null,
     followerCount: u.followerCount ?? 0,
     followingCount: u.followingCount ?? 0,
     interests: (u.interests || []).map((i) => (i && i._id ? i._id.toString() : i.toString())),

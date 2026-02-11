@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema(
     gender: { type: String, default: null },
     dateOfBirth: { type: String, default: null }, // yyyy-MM-dd
     documentUrl: { type: String, default: null },
+    country: { type: String, default: null },
+    city: { type: String, default: null },
 
     // interests
     interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Interest', default: [] }],
