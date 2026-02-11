@@ -1,0 +1,95 @@
+CURSOR MOBILE APP - API ENDPOINTS
+==================================
+
+BASE URL: https://kins-crm.vercel.app/api/v1
+
+AUTHENTICATION
+--------------
+POST   https://kins-crm.vercel.app/api/v1/auth/login
+
+USER PROFILE
+------------
+GET    https://kins-crm.vercel.app/api/v1/me
+PUT    https://kins-crm.vercel.app/api/v1/me/about
+DELETE https://kins-crm.vercel.app/api/v1/me
+
+INTERESTS
+---------
+GET    https://kins-crm.vercel.app/api/v1/interests
+GET    https://kins-crm.vercel.app/api/v1/me/interests
+POST   https://kins-crm.vercel.app/api/v1/me/interests
+
+POSTS (NEW)
+-----------
+POST   https://kins-crm.vercel.app/api/v1/posts
+GET    https://kins-crm.vercel.app/api/v1/posts/:id
+DELETE https://kins-crm.vercel.app/api/v1/posts/:id
+
+FEED (NEW)
+----------
+GET    https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
+
+
+AUTHENTICATION HEADER
+---------------------
+Authorization: Bearer YOUR_JWT_TOKEN
+
+(Required for all endpoints except login and GET /interests)
+
+
+POST TYPES SUPPORTED
+--------------------
+1. text   - Simple text posts
+2. image  - Image posts with CDN upload (multipart/form-data)
+3. video  - Video posts with CDN upload (multipart/form-data)
+4. poll   - Poll posts with multiple options
+
+
+EXAMPLE REQUESTS
+----------------
+
+1. Login:
+   POST https://kins-crm.vercel.app/api/v1/auth/login
+   Body: {
+     "provider": "phone",
+     "providerUserId": "+1234567890",
+     "phoneNumber": "+1234567890",
+     "name": "John Doe"
+   }
+
+2. Create Text Post:
+   POST https://kins-crm.vercel.app/api/v1/posts
+   Headers: Authorization: Bearer TOKEN
+   Body: {
+     "type": "text",
+     "content": "Hello world!",
+     "interestIds": ["interestId1", "interestId2"]
+   }
+
+3. Get Feed:
+   GET https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
+   Headers: Authorization: Bearer TOKEN
+
+4. Set Interests:
+   POST https://kins-crm.vercel.app/api/v1/me/interests
+   Headers: Authorization: Bearer TOKEN
+   Body: {
+     "interestIds": ["interestId1", "interestId2", "interestId3"]
+   }
+
+
+IMPORTANT NOTES
+---------------
+- All endpoints require HTTPS
+- JWT token expires in 7 days
+- Posts require at least 1 interest
+- Feed is personalized based on user interests
+- Media uploads use Bunny CDN
+- Maximum file size: 100MB per file
+- Feed pagination: max limit is 100
+
+
+For detailed documentation, see:
+- MOBILE_ENDPOINTS.md (complete guide)
+- API_V1.md (full API docs)
+- FEED_SYSTEM.md (architecture)
