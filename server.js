@@ -62,6 +62,7 @@ const {
 const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const { connectMongo } = require('./config/db');
+const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
 const v1Routes = require('./routes/v1');
 
@@ -85,6 +86,9 @@ const upload = multer({
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Ensure MongoDB connection for all routes (critical for Vercel serverless)
+app.use(ensureMongo);
 
 // Auth routes (Twilio Verify + JWT)
 app.use('/auth', authRoutes);
