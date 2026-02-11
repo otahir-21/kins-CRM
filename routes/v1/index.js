@@ -6,6 +6,7 @@ const postsRoutes = require('./postsRoutes');
 const feedRoutes = require('./feedRoutes');
 const interactionsRoutes = require('./interactionsRoutes');
 const debugRoutes = require('./debugRoutes');
+const maintenanceRoutes = require('./maintenanceRoutes');
 
 const router = express.Router();
 
@@ -20,5 +21,8 @@ router.use('/', interactionsRoutes);
 
 // Debug endpoints (for troubleshooting)
 router.use('/debug', debugRoutes);
+
+// Maintenance endpoints (admin operations)
+router.use('/maintenance', maintenanceRoutes);
 
 module.exports = router;
