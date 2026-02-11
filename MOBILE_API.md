@@ -32,12 +32,17 @@ All paths below are relative to **`/api/v1`**.
 | POST   | `/auth/login` | No  | Login/register; returns JWT and user. |
 | GET    | `/me` | JWT | Current user profile. |
 | PUT    | `/me/about` | JWT | Update profile (About You). |
+| DELETE | `/me` | JWT | Delete account. |
 | GET    | `/me/interests` | JWT | Get my interests. |
 | POST   | `/me/interests` | JWT | Set my interests (replace list). |
 | GET    | `/interests` | No  | Master list of active interests. |
 | POST   | `/interests` | JWT | Create interest (admin). |
 | PUT    | `/interests/:id` | JWT | Update interest. |
 | DELETE | `/interests/:id` | JWT | Soft-delete interest. |
+| POST   | `/posts` | JWT | Create post (text/image/video/poll). |
+| GET    | `/posts/:id` | JWT | Get single post. |
+| DELETE | `/posts/:id` | JWT | Delete post. |
+| GET    | `/feed` | JWT | Get personalized feed (paginated). |
 
 ---
 
@@ -58,6 +63,10 @@ GET    https://kins-crm.vercel.app/api/v1/interests
 POST   https://kins-crm.vercel.app/api/v1/interests
 PUT    https://kins-crm.vercel.app/api/v1/interests/:id
 DELETE https://kins-crm.vercel.app/api/v1/interests/:id
+POST   https://kins-crm.vercel.app/api/v1/posts
+GET    https://kins-crm.vercel.app/api/v1/posts/:id
+DELETE https://kins-crm.vercel.app/api/v1/posts/:id
+GET    https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
 ```
 
 **Auth header for protected routes:**  

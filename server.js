@@ -136,9 +136,14 @@ app.get('/api-info', (req, res) => {
         authLogin: { method: 'POST', url: `${baseUrl}/api/v1/auth/login` },
         me: { method: 'GET', url: `${baseUrl}/api/v1/me` },
         meAbout: { method: 'PUT', url: `${baseUrl}/api/v1/me/about` },
+        meDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/me` },
         meInterests: { method: 'GET', url: `${baseUrl}/api/v1/me/interests` },
         meInterestsSet: { method: 'POST', url: `${baseUrl}/api/v1/me/interests` },
-        interests: `${baseUrl}/api/v1/interests`
+        interests: `${baseUrl}/api/v1/interests`,
+        postsCreate: { method: 'POST', url: `${baseUrl}/api/v1/posts`, note: 'multipart/form-data for media' },
+        postsGet: { method: 'GET', url: `${baseUrl}/api/v1/posts/:id` },
+        postsDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/posts/:id` },
+        feed: { method: 'GET', url: `${baseUrl}/api/v1/feed?page=1&limit=20` }
       },
       surveys: {
         create: { method: 'POST', url: `${baseUrl}/api/surveys` },
