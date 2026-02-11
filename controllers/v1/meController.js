@@ -122,4 +122,17 @@ async function getMyInterests(req, res) {
   return res.status(200).json({ success: true, interests: list, data: list });
 }
 
-module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests };
+/**
+ * DELETE /me - delete user account (hard delete from MongoDB)
+ */
+async function deleteMe(req, res) {
+  try {
+    await User.findByIdAndDelete(req.userId);
+    return res.status(200).json({ success: true, message: 'Account deleted successfully.' });
+  } catch (err) {
+    console.error('DELETE /me error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to delete account.' });
+  }
+}
+
+module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, deleteMe };

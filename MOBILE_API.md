@@ -51,6 +51,7 @@ All paths below are relative to **`/api/v1`**.
 POST   https://kins-crm.vercel.app/api/v1/auth/login
 GET    https://kins-crm.vercel.app/api/v1/me
 PUT    https://kins-crm.vercel.app/api/v1/me/about
+DELETE https://kins-crm.vercel.app/api/v1/me
 GET    https://kins-crm.vercel.app/api/v1/me/interests
 POST   https://kins-crm.vercel.app/api/v1/me/interests
 GET    https://kins-crm.vercel.app/api/v1/interests

@@ -127,6 +127,25 @@ Rate limited (e.g. 30 requests per 15 minutes per IP).
 
 ---
 
+### DELETE /me
+
+Delete the user's account (hard delete from MongoDB).
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Account deleted successfully."
+}
+```
+
+**Errors:** 401 (missing/invalid token), 500 (database error).
+
+---
+
 ## Interests (master list)
 
 ### GET /interests
