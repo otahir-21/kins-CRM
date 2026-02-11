@@ -33,9 +33,11 @@ const postSchema = new mongoose.Schema(
     // Interests (for targeting feed)
     interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Interest', required: true }],
     
-    // Engagement
-    likesCount: { type: Number, default: 0 },
-    commentsCount: { type: Number, default: 0 },
+    // Engagement (cached counts for performance)
+    likesCount: { type: Number, default: 0, min: 0 },
+    commentsCount: { type: Number, default: 0, min: 0 },
+    sharesCount: { type: Number, default: 0, min: 0 },
+    viewsCount: { type: Number, default: 0, min: 0 },
     
     // Soft delete
     isActive: { type: Boolean, default: true },

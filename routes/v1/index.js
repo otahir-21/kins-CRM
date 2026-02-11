@@ -4,6 +4,7 @@ const meRoutes = require('./meRoutes');
 const interestsRoutes = require('./interestsRoutes');
 const postsRoutes = require('./postsRoutes');
 const feedRoutes = require('./feedRoutes');
+const interactionsRoutes = require('./interactionsRoutes');
 
 const router = express.Router();
 
@@ -12,5 +13,8 @@ router.use('/me', meRoutes);
 router.use('/interests', interestsRoutes);
 router.use('/posts', postsRoutes);
 router.use('/feed', feedRoutes);
+
+// Interactions (likes, comments, shares, views)
+router.use('/', interactionsRoutes);
 
 module.exports = router;
