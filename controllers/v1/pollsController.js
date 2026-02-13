@@ -1,4 +1,5 @@
 const Post = require('../../models/Post');
+const PollVote = require('../../models/PollVote');
 const mongoose = require('mongoose');
 
 /**
@@ -53,6 +54,12 @@ async function voteOnPoll(req, res) {
 
     await post.save();
 
+    await PollVote.findOneAndUpdate(
+      { userId, postId },
+      { userId, postId, optionIndex },
+      { upsert: true }
+    );
+
     return res.status(200).json({
       success: true,
       message: 'Vote recorded successfully.',
@@ -104,15 +111,13 @@ async function getPollResults(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid poll data.' });
     }
 
-    // Check if current user voted
+    // Check if current user voted and which option
     const userIdString = userId.toString();
     const hasVoted = post.poll.votedUsers.some((id) => id.toString() === userIdString);
     let userVotedOption = null;
-
     if (hasVoted) {
-      // Find which option user voted for (we need to track this better in future)
-      // For now, just indicate they voted
-      userVotedOption = -1; // -1 means voted but we don't track which option yet
+      const pv = await PollVote.findOne({ userId, postId }).select('optionIndex').lean();
+      userVotedOption = pv ? pv.optionIndex : -1;
     }
 
     return res.status(200).json({
@@ -158,7 +163,6 @@ async function removeVote(req, res) {
       return res.status(400).json({ success: false, error: 'This post is not a poll.' });
     }
 
-    // Check if user voted
     const userIdString = userId.toString();
     const votedUserIndex = post.poll.votedUsers.findIndex((id) => id.toString() === userIdString);
 
@@ -166,16 +170,17 @@ async function removeVote(req, res) {
       return res.status(400).json({ success: false, error: 'You have not voted on this poll.' });
     }
 
-    // Find which option user voted for
-    // Note: This is a limitation - we need to track which option each user voted for
-    // For now, we'll just decrement total votes and remove user from votedUsers
-    // TODO: Improve poll schema to track user-option mapping
-
+    const pv = await PollVote.findOne({ userId, postId }).select('optionIndex').lean();
+    const optionIndex = pv ? pv.optionIndex : 0;
+    if (optionIndex >= 0 && optionIndex < post.poll.options.length) {
+      post.poll.options[optionIndex].votes = Math.max(0, (post.poll.options[optionIndex].votes || 0) - 1);
+    }
     post.poll.totalVotes = Math.max(0, post.poll.totalVotes - 1);
     post.poll.votedUsers.splice(votedUserIndex, 1);
     post.markModified('poll');
 
     await post.save();
+    await PollVote.deleteOne({ userId, postId });
 
     return res.status(200).json({
       success: true,
