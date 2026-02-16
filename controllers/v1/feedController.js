@@ -226,4 +226,42 @@ async function getFeed(req, res) {
   }
 }
 
-module.exports = { getFeed };
+/**
+ * Get all posts from all users (paginated).
+ * GET /api/v1/posts?page=1&limit=20
+ * Returns: { success, posts: [...], pagination }. Same list shape as /posts/my.
+ */
+async function getAllPosts(req, res) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const posts = await Post.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'name username profilePictureUrl')
+      .populate('interests', 'name')
+      .select('_id userId type content media poll interests likesCount commentsCount sharesCount viewsCount createdAt')
+      .lean();
+
+    const total = await Post.countDocuments({ isActive: true });
+
+    return res.status(200).json({
+      success: true,
+      posts,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + posts.length < total,
+      },
+    });
+  } catch (err) {
+    console.error('GET /posts (all) error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch posts.' });
+  }
+}
+
+module.exports = { getFeed, getAllPosts };
