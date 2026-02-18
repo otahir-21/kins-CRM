@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../../models/User');
 const Interest = require('../../models/Interest');
+const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
@@ -125,11 +126,14 @@ async function getMyInterests(req, res) {
 }
 
 /**
- * DELETE /me - delete user account (hard delete from MongoDB)
+ * DELETE /me - delete user account (hard delete from MongoDB).
+ * Cascade: deactivate all posts by this user so they stop showing in feed (no "anonymous" author).
  */
 async function deleteMe(req, res) {
   try {
-    await User.findByIdAndDelete(req.userId);
+    const userId = req.userId;
+    await Post.updateMany({ userId }, { isActive: false });
+    await User.findByIdAndDelete(userId);
     return res.status(200).json({ success: true, message: 'Account deleted successfully.' });
   } catch (err) {
     console.error('DELETE /me error:', err);
