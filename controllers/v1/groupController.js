@@ -3,6 +3,18 @@ const Group = require('../../models/Group');
 const BunnyService = require('../../services/BunnyService');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 
+function toGroupMember(memberDoc, adminIds) {
+  if (!memberDoc || !memberDoc._id) return null;
+  const id = memberDoc._id.toString();
+  return {
+    id,
+    name: memberDoc.name ?? null,
+    username: memberDoc.username ?? null,
+    profilePictureUrl: memberDoc.profilePictureUrl ?? null,
+    isAdmin: adminIds.includes(id),
+  };
+}
+
 function escapeRegex(str) {
   if (!str || typeof str !== 'string') return '';
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -73,6 +85,58 @@ async function getGroups(req, res) {
   } catch (err) {
     console.error('GET /groups error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to list groups.' });
+  }
+}
+
+/**
+ * GET /api/v1/groups/:groupId
+ * Group detail with members list (id, name, username, profilePictureUrl, isAdmin).
+ * Only group members can view (so admin can see list to add people).
+ */
+async function getGroupById(req, res) {
+  try {
+    const userId = req.userId;
+    const groupId = req.params.groupId;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    const group = await Group.findById(groupId)
+      .populate('members', 'name username profilePictureUrl')
+      .lean();
+
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const memberIds = (group.members || []).map((m) => (m && m._id ? m._id.toString() : null)).filter(Boolean);
+    if (!memberIds.includes(userId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group members can view this group.' });
+    }
+
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    const members = (group.members || [])
+      .filter((m) => m && m._id)
+      .map((m) => toGroupMember(m, adminIds));
+
+    return res.status(200).json({
+      success: true,
+      group: {
+        id: group._id.toString(),
+        name: group.name,
+        description: group.description ?? null,
+        type: group.type,
+        memberCount: members.length,
+        imageUrl: group.groupImageUrl ?? null,
+        isMember: true,
+        isAdmin: adminIds.includes(userId.toString()),
+      },
+      members,
+    });
+  } catch (err) {
+    console.error('GET /groups/:groupId error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to get group.' });
   }
 }
 
@@ -199,4 +263,64 @@ async function addMembers(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups, addMembers };
+/**
+ * POST /api/v1/groups/:groupId/join
+ * Current user joins the group. Idempotent if already a member.
+ */
+async function joinGroup(req, res) {
+  try {
+    const userId = req.userId;
+    const groupId = req.params.groupId;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const memberIds = (group.members || []).map((id) => id.toString());
+    if (memberIds.includes(userId.toString())) {
+      return res.status(200).json({
+        success: true,
+        message: 'Already a member.',
+        group: {
+          id: group._id.toString(),
+          name: group.name,
+          description: group.description ?? null,
+          type: group.type,
+          memberCount: memberIds.length,
+          imageUrl: group.groupImageUrl ?? null,
+        },
+      });
+    }
+
+    const result = await Group.findByIdAndUpdate(
+      groupId,
+      { $addToSet: { members: userId } },
+      { new: true }
+    ).lean();
+
+    const memberCount = (result.members || []).length;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Joined group.',
+      group: {
+        id: result._id.toString(),
+        name: result.name,
+        description: result.description ?? null,
+        type: result.type,
+        memberCount,
+        imageUrl: result.groupImageUrl ?? null,
+      },
+    });
+  } catch (err) {
+    console.error('POST /groups/:groupId/join error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to join group.' });
+  }
+}
+
+module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup };

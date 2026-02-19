@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { createGroup, getGroups, addMembers } = require('../../controllers/v1/groupController');
+const { createGroup, getGroups, getGroupById, addMembers, joinGroup } = require('../../controllers/v1/groupController');
 
 const router = express.Router();
 
@@ -22,5 +22,9 @@ router.get('/', getGroups);
 router.post('/', upload.single('image'), createGroup);
 // Add member(s) to group. Body: { userId } or { userIds: [id1, id2] }. Admin only.
 router.post('/:groupId/members', addMembers);
+// Join group (current user). Idempotent.
+router.post('/:groupId/join', joinGroup);
+// Group detail + members list (only for group members; admin can use to add people)
+router.get('/:groupId', getGroupById);
 
 module.exports = router;
