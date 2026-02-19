@@ -12,15 +12,28 @@ function escapeRegex(str) {
 }
 
 /**
+ * Display name for chat/list: prefer name, then username, then 'User'.
+ */
+function getDisplayName(name, username) {
+  if (name != null && String(name).trim() !== '') return String(name).trim();
+  if (username != null && String(username).trim() !== '') return String(username).trim();
+  return 'User';
+}
+
+/**
  * Normalize user for response (public profile fields only).
+ * Includes displayName so chat/list can show one label (name → username → 'User').
  */
 function toPublicUser(user) {
   if (!user) return null;
   const u = user._id ? user : { _id: user.id, ...user };
+  const name = u.name ?? null;
+  const username = u.username ?? null;
   return {
     id: u._id.toString(),
-    name: u.name ?? null,
-    username: u.username ?? null,
+    name,
+    username,
+    displayName: getDisplayName(name, username),
     profilePictureUrl: u.profilePictureUrl ?? null,
     bio: u.bio ?? null,
     followerCount: u.followerCount ?? 0,
@@ -380,8 +393,9 @@ async function searchUsers(req, res) {
 }
 
 /**
- * GET /users/:userId
- * Public profile for a user (name, username, bio, avatar, counts, isFollowedByMe).
+ * GET /api/v1/users/:userId
+ * Public profile for a user (name, username, displayName, bio, avatar, counts, isFollowedByMe).
+ * For chat: use user.displayName (name → username → 'User') so the other user's label is never "User" when we have username.
  */
 async function getPublicProfile(req, res) {
   try {
