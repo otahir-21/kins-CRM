@@ -3,6 +3,7 @@ const User = require('../../models/User');
 const Interest = require('../../models/Interest');
 const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
+const { createCustomToken } = require('../../services/firebaseAdmin');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
 
@@ -50,6 +51,27 @@ function toInterestDoc(i) {
  */
 async function getMe(req, res) {
   return res.status(200).json({ success: true, user: toUserResponse(req.user) });
+}
+
+/**
+ * GET /me/firebase-token - get Firebase custom token for chat (Firestore/Storage).
+ * UID in the token = current user's MongoDB _id so Flutter can use same identity in Firebase.
+ */
+async function getFirebaseToken(req, res) {
+  try {
+    const uid = req.userId.toString();
+    const token = await createCustomToken(uid);
+    if (!token) {
+      return res.status(503).json({
+        success: false,
+        error: 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.',
+      });
+    }
+    return res.status(200).json({ success: true, token });
+  } catch (err) {
+    console.error('GET /me/firebase-token error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to create Firebase token.' });
+  }
 }
 
 /**
@@ -141,4 +163,4 @@ async function deleteMe(req, res) {
   }
 }
 
-module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, deleteMe };
+module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, getFirebaseToken, deleteMe };

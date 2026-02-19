@@ -25,6 +25,7 @@ const Sidebar = () => {
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/users', icon: Users, label: 'Users' },
+    { path: '/groups', icon: MessageCircle, label: 'Groups' },
     { path: '/documents', icon: FileText, label: 'Documents' },
     { path: '/interests', icon: Tag, label: 'Interests' },
     { path: '/surveys', icon: ClipboardList, label: 'Surveys' },

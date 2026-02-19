@@ -39,6 +39,8 @@ function App() {
           <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />
           <Route path="/posts-moderation" element={<PostsModeration />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/groups/:groupId/chat" element={<GroupChat />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
