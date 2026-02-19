@@ -7,6 +7,7 @@
  */
 let firebaseAdmin = null;
 let auth = null;
+let messaging = null;
 let lastFirebaseError = null;
 
 /** Returns list of missing env var names (empty if all set). */
@@ -55,6 +56,7 @@ function getAuth() {
         }),
       });
       auth = firebaseAdmin.auth();
+      messaging = firebaseAdmin.messaging();
     } catch (err) {
       lastFirebaseError = err.message || String(err);
       console.error('Firebase Admin init error:', lastFirebaseError);
@@ -80,4 +82,50 @@ async function createCustomToken(uid) {
   }
 }
 
-module.exports = { getAuth, createCustomToken, getMissingFirebaseEnv, getLastFirebaseError };
+/**
+ * Get Firebase Messaging (for FCM). Returns null if Firebase not configured.
+ */
+function getMessaging() {
+  getAuth(); // ensure init
+  return messaging || null;
+}
+
+/**
+ * Send FCM data (and optional notification) to multiple tokens.
+ * @param {string[]} tokens - FCM device tokens
+ * @param {Record<string, string>} data - data payload (e.g. type, conversationId, senderId, ...)
+ * @param {{ title?: string, body?: string }} notification - optional tray title/body
+ * @returns {{ successCount: number, failureCount: number, errors?: any[] }}
+ */
+async function sendMulticast(tokens, data, notification = null) {
+  const m = getMessaging();
+  if (!m || !tokens || tokens.length === 0) {
+    return { successCount: 0, failureCount: tokens ? tokens.length : 0 };
+  }
+  const message = {
+    data: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
+    tokens,
+    android: { priority: 'high' },
+    apns: { payload: { aps: { contentAvailable: true } }, fcmOptions: {} },
+  };
+  if (notification && (notification.title || notification.body)) {
+    message.notification = {
+      title: notification.title || '',
+      body: notification.body || '',
+    };
+  }
+  try {
+    const resp = await m.sendEachForMulticast(message);
+    return {
+      successCount: resp.successCount,
+      failureCount: resp.failureCount,
+      errors: resp.responses.filter((r) => !r.success).map((r) => r.error?.message || r.error),
+    };
+  } catch (err) {
+    lastFirebaseError = err.message || String(err);
+    console.error('FCM sendMulticast error:', lastFirebaseError);
+    return { successCount: 0, failureCount: tokens.length, errors: [lastFirebaseError] };
+  }
+}
+
+module.exports = { getAuth, getMessaging, createCustomToken, sendMulticast, getMissingFirebaseEnv, getLastFirebaseError };

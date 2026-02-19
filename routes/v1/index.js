@@ -6,6 +6,7 @@ const postsRoutes = require('./postsRoutes');
 const feedRoutes = require('./feedRoutes');
 const followRoutes = require('./followRoutes');
 const groupRoutes = require('./groupRoutes');
+const chatRoutes = require('./chatRoutes');
 const interactionsRoutes = require('./interactionsRoutes');
 const debugRoutes = require('./debugRoutes');
 
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/me', meRoutes);
+router.use('/chat', chatRoutes);
 router.use('/interests', interestsRoutes);
 router.use('/posts', postsRoutes);
 router.use('/feed', feedRoutes);

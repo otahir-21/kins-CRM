@@ -1,0 +1,14 @@
+---
+description: React frontend (Vite) – run instructions, API base, routes, and conventions
+globs: frontend/**/*
+alwaysApply: false
+---
+
+# Kins-CRM frontend
+
+- **Run:** `cd frontend && npm install && npm run dev` → http://localhost:5173. Backend must run on port 3000; Vite proxies `/api` there.
+- **API base:** `frontend/src/utils/api.js` uses `VITE_API_URL` in prod; in dev same-origin + proxy. For **app features** use `/api/v1/*` and send `Authorization: Bearer <token>` (JWT from `POST /api/v1/auth/login`). Legacy dashboard uses `/api/*` (no token in current setup).
+- **Routes:** Defined in `frontend/src/App.jsx`. Protected routes use `ProtectedRoute` and `Layout`. Add nav links in `frontend/src/components/Sidebar.jsx`.
+- **New feature:** Add API method in `frontend/src/utils/api.js`, route in `App.jsx`, component under `frontend/src/components/`. For v1 endpoints, ensure axios sends the JWT (e.g. interceptor + stored token).
+- **Stack:** React 18, React Router 6, Vite, Tailwind, Axios, Lucide React, Recharts.
+- **Full instructions:** See `docs/FRONTEND_CURSOR_INSTRUCTIONS.md`.

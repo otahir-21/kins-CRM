@@ -28,6 +28,9 @@ const userSchema = new mongoose.Schema(
     followerCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
 
+    // FCM token for push (chat notifications, etc.)
+    fcmToken: { type: String, default: null },
+
     // location (for future nearby feature)
     location: {
       latitude: { type: Number, default: null },

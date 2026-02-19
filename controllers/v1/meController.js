@@ -160,6 +160,22 @@ async function getMyInterests(req, res) {
 }
 
 /**
+ * POST /me/fcm-token - save FCM token for push (chat notifications).
+ * Body: { fcmToken: string }
+ */
+async function saveFcmToken(req, res) {
+  try {
+    const { fcmToken } = req.body;
+    const token = typeof fcmToken === 'string' ? fcmToken.trim() || null : null;
+    await User.findByIdAndUpdate(req.userId, { fcmToken: token, updatedAt: new Date() });
+    return res.status(200).json({ success: true, message: 'FCM token saved.' });
+  } catch (err) {
+    console.error('POST /me/fcm-token error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to save FCM token.' });
+  }
+}
+
+/**
  * DELETE /me - delete user account (hard delete from MongoDB).
  * Cascade: deactivate all posts by this user so they stop showing in feed (no "anonymous" author).
  */
@@ -175,4 +191,4 @@ async function deleteMe(req, res) {
   }
 }
 
-module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, getFirebaseToken, deleteMe };
+module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe };

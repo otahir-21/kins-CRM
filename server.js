@@ -59,6 +59,7 @@ const {
   deleteOnboardingStep
 } = require('./onboarding-helpers');
 
+const compression = require('compression');
 const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const { connectMongo } = require('./config/db');
@@ -85,6 +86,7 @@ const upload = multer({
 
 // Middleware
 app.use(cors());
+app.use(compression()); // gzip responses – smaller payloads, faster over network
 app.use(express.json());
 
 // Ensure MongoDB connection for all routes (critical for Vercel serverless)
@@ -143,11 +145,14 @@ app.get('/api-info', (req, res) => {
         meDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/me` },
         meInterests: { method: 'GET', url: `${baseUrl}/api/v1/me/interests` },
         meInterestsSet: { method: 'POST', url: `${baseUrl}/api/v1/me/interests` },
+        meFcmToken: { method: 'POST', url: `${baseUrl}/api/v1/me/fcm-token`, body: { fcmToken: '...' } },
+        meFirebaseToken: { method: 'GET', url: `${baseUrl}/api/v1/me/firebase-token` },
         interests: `${baseUrl}/api/v1/interests`,
         postsCreate: { method: 'POST', url: `${baseUrl}/api/v1/posts`, note: 'multipart/form-data for media' },
         postsGet: { method: 'GET', url: `${baseUrl}/api/v1/posts/:id` },
         postsDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/posts/:id` },
-        feed: { method: 'GET', url: `${baseUrl}/api/v1/feed?page=1&limit=20` }
+        feed: { method: 'GET', url: `${baseUrl}/api/v1/feed?page=1&limit=20` },
+        chatNotify: { method: 'POST', url: `${baseUrl}/api/v1/chat/notify`, body: 'type, recipientIds, senderId, senderName, messagePreview, conversationId|groupId+groupName', note: 'See docs/CHAT_NOTIFICATIONS.md' }
       },
       surveys: {
         create: { method: 'POST', url: `${baseUrl}/api/surveys` },
