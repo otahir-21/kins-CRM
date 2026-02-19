@@ -325,8 +325,15 @@ async function joinGroup(req, res) {
 
 /**
  * PUT /api/v1/groups/:groupId
- * Update group settings. Body (form-data): name?, description?, type? (interactive|updates_only), optional image (field: image).
- * Only group admins can update.
+ * Update group settings. Only group admins can update.
+ *
+ * Body must be multipart/form-data (NOT application/json). Fields:
+ *   - name (optional)
+ *   - description (optional)
+ *   - type (optional): "interactive" | "updates_only"
+ *   - image (optional): file field name must be "image" or "file"
+ *
+ * Frontend: use FormData; append text fields and append the file with key "image" (or "file").
  */
 async function updateGroup(req, res) {
   try {
@@ -359,12 +366,14 @@ async function updateGroup(req, res) {
     if (description !== undefined) updates.description = description || null;
     if (type !== undefined) updates.type = type;
 
-    if (req.file && req.file.buffer && req.file.buffer.length) {
+    // Accept file from req.file (single) or req.files.image[0] / req.files.file[0] (fields)
+    const file = req.file || (req.files && ((req.files.image && req.files.image[0]) || (req.files.file && req.files.file[0])));
+    if (file && file.buffer && file.buffer.length) {
       if (!BunnyService.isConfigured()) {
         return res.status(500).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
       }
-      const fileName = req.file.originalname || `group-${Date.now()}.jpg`;
-      const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'groups');
+      const fileName = file.originalname || `group-${Date.now()}.jpg`;
+      const { cdnUrl } = await BunnyService.upload(file.buffer, fileName, 'groups');
       updates.groupImageUrl = cdnUrl;
     }
 

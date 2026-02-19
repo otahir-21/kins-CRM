@@ -24,8 +24,8 @@ router.post('/', upload.single('image'), createGroup);
 router.post('/:groupId/members', addMembers);
 // Join group (current user). Idempotent.
 router.post('/:groupId/join', joinGroup);
-// Update group settings. Admin only. Body: name?, description?, type?, optional image.
-router.put('/:groupId', upload.single('image'), updateGroup);
+// Update group settings. Admin only. Body: multipart/form-data with name?, description?, type?, and image (field name "image" or "file").
+router.put('/:groupId', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'file', maxCount: 1 }]), updateGroup);
 // Delete group. Admin only.
 router.delete('/:groupId', deleteGroup);
 // Group detail + members list (only for group members; admin can use to add people)
