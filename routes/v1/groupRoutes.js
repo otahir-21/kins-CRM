@@ -7,7 +7,7 @@ const router = express.Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB (for ~4MB images + overhead)
   fileFilter: (req, file, cb) => {
     const allowed = /^image\/(jpeg|png|gif|webp)$/i.test(file.mimetype);
     cb(null, allowed);
@@ -24,8 +24,8 @@ router.post('/', upload.single('image'), createGroup);
 router.post('/:groupId/members', addMembers);
 // Join group (current user). Idempotent.
 router.post('/:groupId/join', joinGroup);
-// Update group settings. Admin only. Body: multipart/form-data with name?, description?, type?, and image (field name "image" or "file").
-router.put('/:groupId', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'file', maxCount: 1 }]), updateGroup);
+// Update group settings. Admin only. Body: multipart/form-data; file in any field (e.g. "image", "file") accepted.
+router.put('/:groupId', upload.any(), updateGroup);
 // Delete group. Admin only.
 router.delete('/:groupId', deleteGroup);
 // Group detail + members list (only for group members; admin can use to add people)

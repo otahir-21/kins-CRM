@@ -324,6 +324,32 @@ async function joinGroup(req, res) {
 }
 
 /**
+ * Get uploaded file from multer req (single, fields, or any).
+ * Returns { buffer, originalname } or null.
+ */
+function getUploadedFile(req) {
+  if (req.file && req.file.buffer && req.file.buffer.length) {
+    return { buffer: req.file.buffer, originalname: req.file.originalname };
+  }
+  if (req.files) {
+    const from = (arr) => (Array.isArray(arr) && arr[0] && arr[0].buffer ? arr[0] : null);
+    const f = (req.files.image && from(req.files.image)) || (req.files.file && from(req.files.file)) || null;
+    if (f) return { buffer: f.buffer, originalname: f.originalname };
+    if (Array.isArray(req.files)) {
+      const first = req.files.find((x) => x && x.buffer && x.buffer.length);
+      if (first) return { buffer: first.buffer, originalname: first.originalname };
+    }
+    const keys = Object.keys(req.files);
+    for (const k of keys) {
+      const arr = req.files[k];
+      const first = Array.isArray(arr) && arr[0] && arr[0].buffer ? arr[0] : null;
+      if (first) return { buffer: first.buffer, originalname: first.originalname };
+    }
+  }
+  return null;
+}
+
+/**
  * PUT /api/v1/groups/:groupId
  * Update group settings. Only group admins can update.
  *
@@ -331,9 +357,7 @@ async function joinGroup(req, res) {
  *   - name (optional)
  *   - description (optional)
  *   - type (optional): "interactive" | "updates_only"
- *   - image (optional): file field name must be "image" or "file"
- *
- * Frontend: use FormData; append text fields and append the file with key "image" (or "file").
+ *   - image (optional): file in field "image", "file", or any file field
  */
 async function updateGroup(req, res) {
   try {
@@ -342,6 +366,11 @@ async function updateGroup(req, res) {
     const name = req.body.name != null ? String(req.body.name).trim() : undefined;
     const description = req.body.description != null ? String(req.body.description).trim() : undefined;
     const type = req.body.type != null ? String(req.body.type).toLowerCase() : undefined;
+
+    const fileInfo = getUploadedFile(req);
+    const receivedFile = !!(fileInfo && fileInfo.buffer && fileInfo.buffer.length);
+    const fileSize = fileInfo && fileInfo.buffer ? fileInfo.buffer.length : 0;
+    console.log(`PUT /groups/:groupId [${groupId}] received file: ${receivedFile ? 'yes' : 'no'}, size: ${fileSize}`);
 
     if (!groupId || !isValidObjectId(groupId)) {
       return res.status(400).json({ success: false, error: 'Invalid group ID.' });
@@ -366,19 +395,21 @@ async function updateGroup(req, res) {
     if (description !== undefined) updates.description = description || null;
     if (type !== undefined) updates.type = type;
 
-    // Accept file from req.file (single) or req.files.image[0] / req.files.file[0] (fields)
-    const file = req.file || (req.files && ((req.files.image && req.files.image[0]) || (req.files.file && req.files.file[0])));
-    if (file && file.buffer && file.buffer.length) {
+    if (fileInfo && fileInfo.buffer && fileInfo.buffer.length) {
       if (!BunnyService.isConfigured()) {
         return res.status(500).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
       }
-      const fileName = file.originalname || `group-${Date.now()}.jpg`;
-      const { cdnUrl } = await BunnyService.upload(file.buffer, fileName, 'groups');
+      const fileName = fileInfo.originalname || `group-${Date.now()}.jpg`;
+      const { cdnUrl } = await BunnyService.upload(fileInfo.buffer, fileName, 'groups');
       updates.groupImageUrl = cdnUrl;
+      console.log(`PUT /groups/:groupId [${groupId}] uploaded image, cdnUrl: ${cdnUrl}`);
     }
 
     if (Object.keys(updates).length === 0) {
       const current = await Group.findById(groupId).lean();
+      if (receivedFile) {
+        console.warn(`PUT /groups/:groupId [${groupId}] WARNING: client sent file (${fileSize} bytes) but imageUrl is null - file was not stored. Check multer/field name and Bunny config.`);
+      }
       return res.status(200).json({
         success: true,
         group: {
@@ -394,6 +425,10 @@ async function updateGroup(req, res) {
 
     const result = await Group.findByIdAndUpdate(groupId, updates, { new: true }).lean();
     const memberCount = (result.members || []).length;
+    const responseImageUrl = result.groupImageUrl ?? null;
+    if (receivedFile && !responseImageUrl) {
+      console.warn(`PUT /groups/:groupId [${groupId}] WARNING: client sent file (${fileSize} bytes) but response imageUrl is null. updates had groupImageUrl: ${updates.groupImageUrl || 'undefined'}`);
+    }
 
     return res.status(200).json({
       success: true,
@@ -403,7 +438,7 @@ async function updateGroup(req, res) {
         description: result.description ?? null,
         type: result.type,
         memberCount,
-        imageUrl: result.groupImageUrl ?? null,
+        imageUrl: responseImageUrl,
       },
     });
   } catch (err) {
