@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const groupSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
+    nameLower: { type: String, default: null, trim: true }, // for case-insensitive unique lookup
     description: { type: String, default: null, trim: true },
     type: {
       type: String,
@@ -19,5 +20,13 @@ const groupSchema = new mongoose.Schema(
 
 groupSchema.index({ createdBy: 1 });
 groupSchema.index({ members: 1 });
+groupSchema.index({ nameLower: 1 }, { unique: true, sparse: true });
+
+groupSchema.pre('save', function (next) {
+  if (this.name) {
+    this.nameLower = this.name.trim().toLowerCase();
+  }
+  next();
+});
 
 module.exports = mongoose.model('Group', groupSchema);

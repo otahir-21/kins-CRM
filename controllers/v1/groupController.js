@@ -173,8 +173,10 @@ async function createGroup(req, res) {
       groupImageUrl = cdnUrl;
     }
 
+    const nameLower = name.trim().toLowerCase();
     const group = await Group.create({
       name,
+      nameLower,
       description: description || null,
       type,
       groupImageUrl,
@@ -197,6 +199,9 @@ async function createGroup(req, res) {
       },
     });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Group name already taken.' });
+    }
     console.error('POST /groups error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to create group.' });
   }
@@ -451,7 +456,10 @@ async function updateGroup(req, res) {
     }
 
     const updates = {};
-    if (name !== undefined) updates.name = name || null;
+    if (name !== undefined) {
+      updates.name = name || null;
+      updates.nameLower = (name || '').trim().toLowerCase() || null;
+    }
     if (description !== undefined) updates.description = description || null;
     if (type !== undefined) updates.type = type;
 
@@ -502,6 +510,9 @@ async function updateGroup(req, res) {
       },
     });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Group name already taken.' });
+    }
     console.error('PUT /groups/:groupId error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to update group.' });
   }
