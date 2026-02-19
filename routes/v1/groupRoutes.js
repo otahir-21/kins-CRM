@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, deleteGroup } = require('../../controllers/v1/groupController');
+const { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup } = require('../../controllers/v1/groupController');
 
 const router = express.Router();
 
@@ -24,7 +24,9 @@ router.post('/', upload.single('image'), createGroup);
 router.post('/:groupId/members', addMembers);
 // Join group (current user). Idempotent.
 router.post('/:groupId/join', joinGroup);
-// Update group settings. Admin only. Body: multipart/form-data; file in any field (e.g. "image", "file") accepted.
+// Upload group avatar only. POST + multipart works reliably (use this from Flutter). Field name: "image".
+router.post('/:groupId/avatar', upload.single('image'), uploadGroupAvatar);
+// Update group settings (name, description, type). Admin only. For image use POST .../avatar.
 router.put('/:groupId', upload.any(), updateGroup);
 // Delete group. Admin only.
 router.delete('/:groupId', deleteGroup);

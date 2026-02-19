@@ -350,14 +350,74 @@ function getUploadedFile(req) {
 }
 
 /**
+ * POST /api/v1/groups/:groupId/avatar
+ * Upload group image only. Body: multipart/form-data with field "image" (file).
+ * Use this from Flutter instead of PUT with image – POST + multipart is reliable everywhere.
+ * Admin only. Returns group with imageUrl.
+ */
+async function uploadGroupAvatar(req, res) {
+  try {
+    const userId = req.userId;
+    const groupId = req.params.groupId;
+
+    const file = req.file || (req.files && req.files.image && req.files.image[0]) || (req.files && req.files.file && req.files.file[0]);
+    const fileBuffer = file && file.buffer;
+    const hasFile = fileBuffer && fileBuffer.length > 0;
+
+    console.log(`POST /groups/:groupId/avatar [${groupId}] received file: ${hasFile ? 'yes' : 'no'}, size: ${hasFile ? fileBuffer.length : 0}`);
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+    if (!hasFile) {
+      return res.status(400).json({ success: false, error: 'Image file required. Send multipart/form-data with field "image".' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    if (!adminIds.includes(userId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group admins can upload avatar.' });
+    }
+
+    if (!BunnyService.isConfigured()) {
+      return res.status(500).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
+    }
+
+    const fileName = (file.originalname || `group-${Date.now()}.jpg`).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const { cdnUrl } = await BunnyService.upload(fileBuffer, fileName, 'groups');
+
+    const updated = await Group.findByIdAndUpdate(
+      groupId,
+      { groupImageUrl: cdnUrl },
+      { new: true }
+    ).lean();
+
+    console.log(`POST /groups/:groupId/avatar [${groupId}] uploaded, imageUrl: ${cdnUrl}`);
+
+    return res.status(200).json({
+      success: true,
+      group: {
+        id: updated._id.toString(),
+        name: updated.name,
+        description: updated.description ?? null,
+        type: updated.type,
+        memberCount: (updated.members || []).length,
+        imageUrl: cdnUrl,
+      },
+    });
+  } catch (err) {
+    console.error('POST /groups/:groupId/avatar error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to upload avatar.' });
+  }
+}
+
+/**
  * PUT /api/v1/groups/:groupId
- * Update group settings. Only group admins can update.
- *
- * Body must be multipart/form-data (NOT application/json). Fields:
- *   - name (optional)
- *   - description (optional)
- *   - type (optional): "interactive" | "updates_only"
- *   - image (optional): file in field "image", "file", or any file field
+ * Update group settings (name, description, type only). Only group admins.
+ * For group image, use POST /groups/:groupId/avatar instead (POST + multipart works reliably).
  */
 async function updateGroup(req, res) {
   try {
@@ -482,4 +542,4 @@ async function deleteGroup(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, deleteGroup };
+module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup };

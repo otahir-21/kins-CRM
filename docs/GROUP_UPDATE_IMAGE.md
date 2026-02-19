@@ -1,11 +1,26 @@
 # Update group settings (including image)
 
-## Endpoint
+## Recommended: upload image only via POST (Flutter / mobile)
 
-`PUT /api/v1/groups/:groupId`
+**Use this when updating the group image** – POST + multipart is reliable and avoids PUT body issues.
+
+### `POST /api/v1/groups/:groupId/avatar`
 
 - **Auth:** `Authorization: Bearer <token>` (group admin only).
-- **Content-Type:** Must be **`multipart/form-data`**. Do **not** use `application/json` when sending an image.
+- **Content-Type:** `multipart/form-data`.
+- **Body:** One field **`image`** (file). No other fields needed.
+- **Response:** `200` with `{ success, group: { id, name, description, type, memberCount, imageUrl } }`.
+
+**Flutter:** Call this endpoint when the user picks an image. Use field name **`image`**. Then call `PUT /groups/:groupId` for name/description/type only (no file).
+
+---
+
+## Optional: update everything in one request (PUT)
+
+### `PUT /api/v1/groups/:groupId`
+
+- **Auth:** `Authorization: Bearer <token>` (group admin only).
+- **Content-Type:** Must be **`multipart/form-data`** if you send a file. Many clients/proxies do not support PUT with a body; if you get `imageUrl: null` after sending an image, use **POST .../avatar** instead.
 
 ## Form fields
 
