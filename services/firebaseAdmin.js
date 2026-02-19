@@ -34,8 +34,15 @@ function getAuth() {
       return null;
     }
     privateKey = typeof privateKey === 'string' ? privateKey.trim() : privateKey;
-    if (typeof privateKey === 'string' && privateKey.includes('\\n')) {
-      privateKey = privateKey.replace(/\\n/g, '\n');
+    if (typeof privateKey === 'string') {
+      if (privateKey.includes('\\n')) {
+        privateKey = privateKey.replace(/\\n/g, '\n');
+      }
+      // Vercel/env sometimes turns newlines into spaces; fix so PEM parses
+      if (privateKey.includes('-----') && !privateKey.includes('\n') && privateKey.includes(' ')) {
+        privateKey = privateKey.replace(/\s+-----/g, '\n-----');
+        privateKey = privateKey.replace(/\n\s+/g, '\n').replace(/\s+\n/g, '\n');
+      }
     }
     try {
       // eslint-disable-next-line global-require

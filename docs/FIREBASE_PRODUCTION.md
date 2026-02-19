@@ -4,7 +4,10 @@ The Flutter app calls **GET /api/v1/me/firebase-token** on your **production** b
 
 `Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.`
 
-then those variables are **not set in the environment where the API runs** (e.g. Vercel).
+then those variables are not set or the key format is wrong.
+
+- **"Missing or invalid Authorization header"** → Send `Authorization: Bearer <jwt>` on the request. In Flutter, call this endpoint only when the user is logged in and attach the same JWT you use for other APIs.
+- **"Invalid PEM formatted message"** → The backend now tries to fix keys where newlines were turned into spaces (e.g. by Vercel). Redeploy and try again. If it still fails, set FIREBASE_PRIVATE_KEY to one line with `\n` where newlines go (see below).
 
 ## Fix: set env vars where the API is deployed
 
