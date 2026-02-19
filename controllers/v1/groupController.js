@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const Group = require('../../models/Group');
 const BunnyService = require('../../services/BunnyService');
+const { isValidObjectId } = require('../../utils/validateObjectId');
 
 function escapeRegex(str) {
   if (!str || typeof str !== 'string') return '';
@@ -136,4 +138,65 @@ async function createGroup(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups };
+/**
+ * POST /api/v1/groups/:groupId/members
+ * Add one or more users to the group. Body: { userId } or { userIds: [id1, id2] }.
+ * Caller must be a group admin.
+ */
+async function addMembers(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const groupId = req.params.groupId;
+    const { userId: singleUserId, userIds: bodyUserIds } = req.body;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    let idsToAdd = [];
+    if (Array.isArray(bodyUserIds) && bodyUserIds.length > 0) {
+      idsToAdd = bodyUserIds.filter((id) => id && isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id));
+    } else if (singleUserId && isValidObjectId(singleUserId)) {
+      idsToAdd = [new mongoose.Types.ObjectId(singleUserId)];
+    }
+    if (idsToAdd.length === 0) {
+      return res.status(400).json({ success: false, error: 'Provide userId or userIds (array of user IDs).' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    if (!adminIds.includes(currentUserId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group admins can add members.' });
+    }
+
+    const result = await Group.findByIdAndUpdate(
+      groupId,
+      { $addToSet: { members: { $each: idsToAdd } } },
+      { new: true }
+    );
+
+    const memberCount = (result.members || []).length;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Member(s) added.',
+      group: {
+        id: result._id.toString(),
+        name: result.name,
+        description: result.description ?? null,
+        type: result.type,
+        memberCount,
+        imageUrl: result.groupImageUrl ?? null,
+      },
+    });
+  } catch (err) {
+    console.error('POST /groups/:groupId/members error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to add members.' });
+  }
+}
+
+module.exports = { createGroup, getGroups, addMembers };
