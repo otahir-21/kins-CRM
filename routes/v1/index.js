@@ -5,6 +5,7 @@ const interestsRoutes = require('./interestsRoutes');
 const postsRoutes = require('./postsRoutes');
 const feedRoutes = require('./feedRoutes');
 const followRoutes = require('./followRoutes');
+const groupRoutes = require('./groupRoutes');
 const interactionsRoutes = require('./interactionsRoutes');
 const debugRoutes = require('./debugRoutes');
 
@@ -16,6 +17,7 @@ router.use('/interests', interestsRoutes);
 router.use('/posts', postsRoutes);
 router.use('/feed', feedRoutes);
 router.use('/users', followRoutes);
+router.use('/groups', groupRoutes);
 
 // Interactions (likes, comments, shares, views, polls)
 router.use('/', interactionsRoutes);

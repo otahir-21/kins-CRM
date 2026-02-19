@@ -7,12 +7,15 @@ const {
   getFollowing,
   getFollowStatus,
   getPublicProfile,
+  searchUsers,
 } = require('../../controllers/v1/followController');
 
 const router = express.Router();
 
 router.use(verifyJwt);
 
+// Search users by username, name, or phone (must be before /:userId)
+router.get('/search', searchUsers);
 // More specific routes first (so path segments are not parsed as userId)
 router.get('/:userId/follow/status', getFollowStatus);
 router.post('/:userId/follow', followUser);

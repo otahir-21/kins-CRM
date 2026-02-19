@@ -4,6 +4,14 @@ const User = require('../../models/User');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 
 /**
+ * Escape special regex chars in a string for safe use in RegExp.
+ */
+function escapeRegex(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Normalize user for response (public profile fields only).
  */
 function toPublicUser(user) {
@@ -303,6 +311,75 @@ async function getFollowStatus(req, res) {
 }
 
 /**
+ * GET /users/search?q=...
+ * Search users by username, name, or phone number.
+ * Returns public profile + isFollowedByMe. Excludes current user. Min query length 2.
+ */
+async function searchUsers(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const q = (req.query.q || req.query.query || '').trim();
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+
+    if (q.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Query must be at least 2 characters.',
+      });
+    }
+
+    const conditions = [];
+    const escaped = escapeRegex(q);
+
+    if (escaped.length > 0) {
+      conditions.push({ username: { $regex: escaped, $options: 'i' } });
+      conditions.push({ name: { $regex: escaped, $options: 'i' } });
+    }
+
+    const digitsOnly = q.replace(/\D/g, '');
+    if (digitsOnly.length >= 3) {
+      const digitRegex = digitsOnly.split('').join('.*');
+      conditions.push({ phoneNumber: { $regex: digitRegex, $options: 'i' } });
+    }
+
+    if (conditions.length === 0) {
+      return res.status(200).json({ success: true, users: [] });
+    }
+
+    const filter = {
+      _id: { $ne: currentUserId },
+      $or: conditions,
+    };
+
+    const users = await User.find(filter)
+      .select('name username profilePictureUrl bio followerCount followingCount')
+      .limit(limit)
+      .lean();
+
+    const userIds = users.map((u) => u._id);
+    const followMap = new Map();
+    if (userIds.length > 0) {
+      const follows = await Follow.find({
+        followerId: currentUserId,
+        followingId: { $in: userIds },
+      })
+        .select('followingId')
+        .lean();
+      follows.forEach((f) => followMap.set(f.followingId.toString(), true));
+    }
+
+    const list = users.map((u) =>
+      toPublicUser({ ...u, isFollowedByMe: !!followMap.get(u._id.toString()) })
+    );
+
+    return res.status(200).json({ success: true, users: list });
+  } catch (err) {
+    console.error('GET /users/search error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Search failed.' });
+  }
+}
+
+/**
  * GET /users/:userId
  * Public profile for a user (name, username, bio, avatar, counts, isFollowedByMe).
  */
@@ -344,4 +421,5 @@ module.exports = {
   getFollowing,
   getFollowStatus,
   getPublicProfile,
+  searchUsers,
 };
