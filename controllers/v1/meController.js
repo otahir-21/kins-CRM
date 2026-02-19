@@ -3,7 +3,7 @@ const User = require('../../models/User');
 const Interest = require('../../models/Interest');
 const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
-const { createCustomToken } = require('../../services/firebaseAdmin');
+const { createCustomToken, getMissingFirebaseEnv } = require('../../services/firebaseAdmin');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
 
@@ -62,10 +62,11 @@ async function getFirebaseToken(req, res) {
     const uid = req.userId.toString();
     const token = await createCustomToken(uid);
     if (!token) {
-      return res.status(503).json({
-        success: false,
-        error: 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.',
-      });
+      const missing = getMissingFirebaseEnv();
+      const message = missing.length
+        ? `Firebase not configured. Missing in this environment: ${missing.join(', ')}. Set them in your host (e.g. Vercel Environment Variables) and redeploy.`
+        : 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in your host environment and redeploy.';
+      return res.status(503).json({ success: false, error: message, missing: missing.length ? missing : undefined });
     }
     return res.status(200).json({ success: true, token });
   } catch (err) {

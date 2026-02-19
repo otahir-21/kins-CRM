@@ -8,15 +8,25 @@
 let firebaseAdmin = null;
 let auth = null;
 
+/** Returns list of missing env var names (empty if all set). */
+function getMissingFirebaseEnv() {
+  const missing = [];
+  if (!process.env.FIREBASE_PROJECT_ID?.trim()) missing.push('FIREBASE_PROJECT_ID');
+  if (!process.env.FIREBASE_CLIENT_EMAIL?.trim()) missing.push('FIREBASE_CLIENT_EMAIL');
+  if (!process.env.FIREBASE_PRIVATE_KEY?.trim()) missing.push('FIREBASE_PRIVATE_KEY');
+  return missing;
+}
+
 function getAuth() {
   if (auth) return auth;
   if (!firebaseAdmin) {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-    if (!projectId || !clientEmail || !privateKey) {
+    if (!projectId || !clientEmail || !privateKey || (typeof privateKey === 'string' && !privateKey.trim())) {
       return null;
     }
+    privateKey = typeof privateKey === 'string' ? privateKey.trim() : privateKey;
     if (typeof privateKey === 'string' && privateKey.includes('\\n')) {
       privateKey = privateKey.replace(/\\n/g, '\n');
     }
@@ -54,4 +64,4 @@ async function createCustomToken(uid) {
   }
 }
 
-module.exports = { getAuth, createCustomToken };
+module.exports = { getAuth, createCustomToken, getMissingFirebaseEnv };
