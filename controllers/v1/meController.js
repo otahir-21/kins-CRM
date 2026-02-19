@@ -3,7 +3,7 @@ const User = require('../../models/User');
 const Interest = require('../../models/Interest');
 const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
-const { createCustomToken, getMissingFirebaseEnv } = require('../../services/firebaseAdmin');
+const { createCustomToken, getMissingFirebaseEnv, getLastFirebaseError } = require('../../services/firebaseAdmin');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
 
@@ -63,10 +63,21 @@ async function getFirebaseToken(req, res) {
     const token = await createCustomToken(uid);
     if (!token) {
       const missing = getMissingFirebaseEnv();
-      const message = missing.length
-        ? `Firebase not configured. Missing in this environment: ${missing.join(', ')}. Set them in your host (e.g. Vercel Environment Variables) and redeploy.`
-        : 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in your host environment and redeploy.';
-      return res.status(503).json({ success: false, error: message, missing: missing.length ? missing : undefined });
+      const detail = getLastFirebaseError();
+      let message;
+      if (missing.length) {
+        message = `Firebase not configured. Missing: ${missing.join(', ')}. Add them in Vercel → Project → Settings → Environment Variables (Production) and redeploy.`;
+      } else if (detail) {
+        message = `Firebase init failed: ${detail}. Check FIREBASE_PRIVATE_KEY format (use \\n for newlines if pasted in one line).`;
+      } else {
+        message = 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in Vercel Environment Variables and redeploy.';
+      }
+      return res.status(503).json({
+        success: false,
+        error: message,
+        missing: missing.length ? missing : undefined,
+        detail: detail || undefined,
+      });
     }
     return res.status(200).json({ success: true, token });
   } catch (err) {

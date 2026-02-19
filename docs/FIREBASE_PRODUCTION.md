@@ -19,8 +19,11 @@ then those variables are **not set in the environment where the API runs** (e.g.
    | `FIREBASE_CLIENT_EMAIL` | From service account JSON: `client_email` |
    | `FIREBASE_PRIVATE_KEY` | From service account JSON: `private_key` (paste the full key including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`) |
 
-3. **Private key:** Paste the key as a single line or keep newlines. If you paste with real newlines, Vercel stores them. If you use `\n` in the value, the backend will replace `\n` with real newlines. **Do not** wrap the key in extra quotes in the UI unless the key itself contains quotes.
-4. **Redeploy** the project (e.g. trigger a new deployment or push a commit) so the new variables are applied.
+3. **Private key (important on Vercel):**
+   - **Option A (recommended):** In the JSON, `private_key` is one string with literal `\n` in it. Copy that **entire** value (including the quotes) and paste into Vercel. Remove the surrounding JSON quotes so the value starts with `-----BEGIN PRIVATE KEY-----\n` and ends with `\n-----END PRIVATE KEY-----\n`. The backend will turn `\n` into real newlines.
+   - **Option B:** Paste the key with real line breaks. If you get "Firebase init failed" or "invalid PEM" after deploy, Vercel may have altered newlines—use Option A instead.
+4. **Redeploy** the project (Deployments → ⋮ on latest → Redeploy) so the new variables are applied.
+5. If it still fails, the API now returns a `detail` field with the real error (e.g. invalid PEM). Check that field in the response to fix the key format.
 
 ### Getting the values from Firebase
 
@@ -34,4 +37,6 @@ then those variables are **not set in the environment where the API runs** (e.g.
 ### After setting and redeploying
 
 - Call **GET /api/v1/me/firebase-token** again with a valid JWT.
-- If something is still missing, the API now returns which variables are missing, e.g. `missing: ["FIREBASE_PRIVATE_KEY"]`, so you can fix the right one.
+- The API response may include:
+  - `missing`: list of env var names that are not set (e.g. `["FIREBASE_PRIVATE_KEY"]`).
+  - `detail`: the actual Firebase error (e.g. "invalid PEM formatted message") when vars are set but the key format is wrong—use this to fix FIREBASE_PRIVATE_KEY.

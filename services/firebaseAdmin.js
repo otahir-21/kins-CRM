@@ -7,6 +7,7 @@
  */
 let firebaseAdmin = null;
 let auth = null;
+let lastFirebaseError = null;
 
 /** Returns list of missing env var names (empty if all set). */
 function getMissingFirebaseEnv() {
@@ -17,8 +18,14 @@ function getMissingFirebaseEnv() {
   return missing;
 }
 
+/** Last error from Firebase init or createCustomToken (for API to return to client). */
+function getLastFirebaseError() {
+  return lastFirebaseError;
+}
+
 function getAuth() {
   if (auth) return auth;
+  lastFirebaseError = null;
   if (!firebaseAdmin) {
     const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
@@ -42,7 +49,8 @@ function getAuth() {
       });
       auth = firebaseAdmin.auth();
     } catch (err) {
-      console.error('Firebase Admin init error:', err.message);
+      lastFirebaseError = err.message || String(err);
+      console.error('Firebase Admin init error:', lastFirebaseError);
       return null;
     }
   }
@@ -59,9 +67,10 @@ async function createCustomToken(uid) {
   try {
     return await a.createCustomToken(uid);
   } catch (err) {
-    console.error('Firebase createCustomToken error:', err.message);
+    lastFirebaseError = err.message || String(err);
+    console.error('Firebase createCustomToken error:', lastFirebaseError);
     return null;
   }
 }
 
-module.exports = { getAuth, createCustomToken, getMissingFirebaseEnv };
+module.exports = { getAuth, createCustomToken, getMissingFirebaseEnv, getLastFirebaseError };
