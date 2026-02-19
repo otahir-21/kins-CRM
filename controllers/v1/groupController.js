@@ -323,4 +323,119 @@ async function joinGroup(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup };
+/**
+ * PUT /api/v1/groups/:groupId
+ * Update group settings. Body (form-data): name?, description?, type? (interactive|updates_only), optional image (field: image).
+ * Only group admins can update.
+ */
+async function updateGroup(req, res) {
+  try {
+    const userId = req.userId;
+    const groupId = req.params.groupId;
+    const name = req.body.name != null ? String(req.body.name).trim() : undefined;
+    const description = req.body.description != null ? String(req.body.description).trim() : undefined;
+    const type = req.body.type != null ? String(req.body.type).toLowerCase() : undefined;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    if (!adminIds.includes(userId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group admins can update the group.' });
+    }
+
+    if (type !== undefined && !['interactive', 'updates_only'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Group type must be "interactive" or "updates_only".' });
+    }
+
+    const updates = {};
+    if (name !== undefined) updates.name = name || null;
+    if (description !== undefined) updates.description = description || null;
+    if (type !== undefined) updates.type = type;
+
+    if (req.file && req.file.buffer && req.file.buffer.length) {
+      if (!BunnyService.isConfigured()) {
+        return res.status(500).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
+      }
+      const fileName = req.file.originalname || `group-${Date.now()}.jpg`;
+      const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'groups');
+      updates.groupImageUrl = cdnUrl;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      const current = await Group.findById(groupId).lean();
+      return res.status(200).json({
+        success: true,
+        group: {
+          id: current._id.toString(),
+          name: current.name,
+          description: current.description ?? null,
+          type: current.type,
+          memberCount: (current.members || []).length,
+          imageUrl: current.groupImageUrl ?? null,
+        },
+      });
+    }
+
+    const result = await Group.findByIdAndUpdate(groupId, updates, { new: true }).lean();
+    const memberCount = (result.members || []).length;
+
+    return res.status(200).json({
+      success: true,
+      group: {
+        id: result._id.toString(),
+        name: result.name,
+        description: result.description ?? null,
+        type: result.type,
+        memberCount,
+        imageUrl: result.groupImageUrl ?? null,
+      },
+    });
+  } catch (err) {
+    console.error('PUT /groups/:groupId error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to update group.' });
+  }
+}
+
+/**
+ * DELETE /api/v1/groups/:groupId
+ * Delete the group. Only group admins can delete.
+ */
+async function deleteGroup(req, res) {
+  try {
+    const userId = req.userId;
+    const groupId = req.params.groupId;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    if (!adminIds.includes(userId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group admins can delete the group.' });
+    }
+
+    await Group.findByIdAndDelete(groupId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Group deleted.',
+    });
+  } catch (err) {
+    console.error('DELETE /groups/:groupId error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to delete group.' });
+  }
+}
+
+module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, deleteGroup };
