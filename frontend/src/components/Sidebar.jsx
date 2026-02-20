@@ -9,7 +9,9 @@ import {
   Tag,
   ClipboardList,
   ShieldCheck,
-  BookOpen
+  BookOpen,
+  MessageCircle,
+  Image as ImageIcon
 } from 'lucide-react';
 import { authService } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +29,7 @@ const Sidebar = () => {
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/groups', icon: MessageCircle, label: 'Groups' },
     { path: '/documents', icon: FileText, label: 'Documents' },
+    { path: '/ads', icon: ImageIcon, label: 'Ads' },
     { path: '/interests', icon: Tag, label: 'Interests' },
     { path: '/surveys', icon: ClipboardList, label: 'Surveys' },
     { path: '/posts-moderation', icon: ShieldCheck, label: 'Posts Moderation' },

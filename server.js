@@ -60,8 +60,11 @@ const {
 } = require('./onboarding-helpers');
 
 const compression = require('compression');
+const crypto = require('crypto');
 const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
+const Ad = require('./models/Ad');
+const BunnyService = require('./services/BunnyService');
 const { connectMongo } = require('./config/db');
 const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
@@ -729,6 +732,136 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error('Error in POST /api/upload/image:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== ADS (legacy for CRM dashboard) ====================
+function toAdResponse(doc) {
+  if (!doc || !doc._id) return null;
+  return {
+    id: doc._id.toString(),
+    imageUrl: doc.imageUrl,
+    link: doc.link,
+    title: doc.title ?? null,
+    isActive: doc.isActive ?? true,
+    order: doc.order ?? 0,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+app.get('/api/ads/active', async (req, res) => {
+  try {
+    const ads = await Ad.find({ isActive: true }).sort({ order: 1, createdAt: -1 }).lean();
+    res.json({ success: true, ads: ads.map(toAdResponse) });
+  } catch (err) {
+    console.error('GET /api/ads/active:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/ads', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+    const [ads, total] = await Promise.all([
+      Ad.find({}).sort({ order: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Ad.countDocuments({}),
+    ]);
+    res.json({ success: true, ads: ads.map(toAdResponse), pagination: { page, limit, total, hasMore: skip + ads.length < total } });
+  } catch (err) {
+    console.error('GET /api/ads:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/ads/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
+    }
+    const ad = await Ad.findById(id).lean();
+    if (!ad) return res.status(404).json({ success: false, error: 'Ad not found.' });
+    res.json({ success: true, ad: toAdResponse(ad) });
+  } catch (err) {
+    console.error('GET /api/ads/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+const adsUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: 'Image file is required (field: image).' });
+    }
+    const link = (req.body.link || '').trim();
+    if (!link) return res.status(400).json({ success: false, error: 'link is required.' });
+    if (!BunnyService.isConfigured()) {
+      return res.status(503).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
+    }
+    const ext = (req.file.originalname || '').split('.').pop() || 'jpg';
+    const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'ads');
+    const title = (req.body.title || '').trim() || null;
+    const isActive = req.body.isActive !== undefined ? (req.body.isActive === true || req.body.isActive === 'true') : true;
+    const order = parseInt(req.body.order, 10);
+    const ad = await Ad.create({
+      imageUrl: cdnUrl,
+      link,
+      title,
+      isActive,
+      order: Number.isNaN(order) ? 0 : order,
+    });
+    res.status(201).json({ success: true, ad: toAdResponse(ad.toObject()) });
+  } catch (err) {
+    console.error('POST /api/ads:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/ads/:id', adsUpload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
+    }
+    const ad = await Ad.findById(id);
+    if (!ad) return res.status(404).json({ success: false, error: 'Ad not found.' });
+    if (req.file && req.file.buffer && BunnyService.isConfigured()) {
+      const ext = (req.file.originalname || '').split('.').pop() || 'jpg';
+      const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+      const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'ads');
+      ad.imageUrl = cdnUrl;
+    }
+    if (req.body.link !== undefined) ad.link = String(req.body.link).trim();
+    if (req.body.title !== undefined) ad.title = String(req.body.title).trim() || null;
+    if (req.body.isActive !== undefined) ad.isActive = req.body.isActive === true || req.body.isActive === 'true';
+    const orderNum = parseInt(req.body.order, 10);
+    if (!Number.isNaN(orderNum)) ad.order = orderNum;
+    await ad.save();
+    res.json({ success: true, ad: toAdResponse(ad.toObject()) });
+  } catch (err) {
+    console.error('PUT /api/ads/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/ads/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
+    }
+    const ad = await Ad.findByIdAndDelete(id);
+    if (!ad) return res.status(404).json({ success: false, error: 'Ad not found.' });
+    res.json({ success: true, message: 'Ad deleted.' });
+  } catch (err) {
+    console.error('DELETE /api/ads/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

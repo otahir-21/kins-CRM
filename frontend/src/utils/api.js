@@ -216,6 +216,18 @@ export const apiService = {
   healthCheck: () => {
     return api.get('/health');
   },
+
+  // Ads (CRM dashboard – legacy /api/ads)
+  getAds: (params = {}) => {
+    const sp = new URLSearchParams();
+    if (params.page) sp.append('page', params.page);
+    if (params.limit) sp.append('limit', params.limit);
+    return api.get(`/api/ads?${sp.toString()}`);
+  },
+  getAdById: (id) => api.get(`/api/ads/${id}`),
+  createAd: (formData) => api.post('/api/ads', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  updateAd: (id, formData) => api.put(`/api/ads/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteAd: (id) => api.delete(`/api/ads/${id}`),
 };
 
 export default api;

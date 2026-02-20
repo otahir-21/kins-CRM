@@ -15,6 +15,9 @@ import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import Groups from './components/Groups';
+import GroupChat from './components/GroupChat';
+import Ads from './components/Ads';
 
 function App() {
   return (
@@ -39,6 +42,7 @@ function App() {
           <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />
           <Route path="/posts-moderation" element={<PostsModeration />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/ads" element={<Ads />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:groupId/chat" element={<GroupChat />} />
           <Route path="/analytics" element={<Analytics />} />
