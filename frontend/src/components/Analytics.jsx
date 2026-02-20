@@ -156,7 +156,7 @@ const Analytics = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium">Completion Rate</p>
               <p className="text-3xl font-bold text-gray-800 mt-2">
-                {stats ? Math.round((stats.usersWithDocuments / stats.totalUsers) * 100) : 80}%
+                {stats && Number(stats.totalUsers) > 0 ? Math.round((Number(stats.usersWithDocuments) / Number(stats.totalUsers)) * 100) : 80}%
               </p>
               <p className="text-gray-600 text-sm mt-2">Document upload</p>
             </div>

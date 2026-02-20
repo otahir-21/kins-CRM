@@ -213,15 +213,24 @@ async function getUserSurveyResponse(userId, surveyId) {
 }
 
 async function getSurveyAnalytics(surveyId) {
-  if (!surveyId || !mongoose.Types.ObjectId.isValid(surveyId)) return { totalResponses: 0, optionCounts: {} };
+  const empty = {
+    surveyTitle: '',
+    surveyQuestion: '',
+    totalResponses: 0,
+    optionStats: [],
+    responses: [],
+  };
+  if (!surveyId || !mongoose.Types.ObjectId.isValid(surveyId)) return empty;
   const survey = await Survey.findById(surveyId).lean();
-  if (!survey) return { totalResponses: 0, optionCounts: {} };
+  if (!survey) return empty;
+
   const optionCounts = {};
   for (const q of survey.questions || []) {
     optionCounts[q.id] = {};
     for (const o of q.options || []) optionCounts[q.id][o.id] = 0;
   }
-  const list = await SurveyResponse.find({ surveyId }).select('responses').lean();
+
+  const list = await SurveyResponse.find({ surveyId }).select('responses userId createdAt').lean();
   let total = 0;
   for (const doc of list) {
     total += 1;
@@ -231,7 +240,42 @@ async function getSurveyAnalytics(surveyId) {
       }
     }
   }
-  return { totalResponses: total, optionCounts };
+
+  const q0 = (survey.questions || [])[0];
+  const optionStats = [];
+  if (q0 && Array.isArray(q0.options)) {
+    const counts = optionCounts[q0.id] || {};
+    for (const opt of q0.options) {
+      const count = counts[opt.id] || 0;
+      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+      optionStats.push({
+        optionId: opt.id,
+        optionText: opt.text || opt.id,
+        count,
+        percentage,
+      });
+    }
+  }
+
+  const optionIdToText = q0 && Array.isArray(q0.options)
+    ? Object.fromEntries((q0.options || []).map((o) => [o.id, o.text || o.id]))
+    : {};
+  const responses = list.slice(0, 10).map((doc) => {
+    const first = (doc.responses || [])[0];
+    return {
+      userId: doc.userId?.toString?.() || doc.userId,
+      selectedOption: first ? (optionIdToText[first.optionId] || first.optionId) : '—',
+      answeredAt: doc.createdAt,
+    };
+  });
+
+  return {
+    surveyTitle: survey.title || '',
+    surveyQuestion: q0 ? (q0.text || '') : '',
+    totalResponses: total,
+    optionStats,
+    responses,
+  };
 }
 
 async function getUserSurveyResponses(userId) {

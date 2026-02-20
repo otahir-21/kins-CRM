@@ -58,7 +58,8 @@ const SurveyAnalytics = () => {
     );
   }
 
-  const chartData = analytics.optionStats.map((stat, index) => ({
+  const optionStats = Array.isArray(analytics.optionStats) ? analytics.optionStats : [];
+  const chartData = optionStats.map((stat, index) => ({
     name: stat.optionText,
     value: stat.count,
     percentage: stat.percentage,
@@ -96,7 +97,7 @@ const SurveyAnalytics = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 text-sm font-medium">Options</p>
-              <p className="text-3xl font-bold text-gray-800 mt-2">{analytics.optionStats.length}</p>
+              <p className="text-3xl font-bold text-gray-800 mt-2">{optionStats.length}</p>
             </div>
             <BarChart3 className="w-12 h-12 text-green-500" />
           </div>
@@ -107,8 +108,8 @@ const SurveyAnalytics = () => {
             <div>
               <p className="text-gray-600 text-sm font-medium">Most Popular</p>
               <p className="text-lg font-bold text-gray-800 mt-2">
-                {analytics.optionStats.length > 0
-                  ? analytics.optionStats.reduce((max, stat) =>
+                {optionStats.length > 0
+                  ? optionStats.reduce((max, stat) =>
                       stat.count > max.count ? stat : max
                     ).optionText
                   : 'N/A'}
@@ -165,7 +166,7 @@ const SurveyAnalytics = () => {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Option Statistics</h2>
         <div className="space-y-4">
-          {analytics.optionStats.map((stat, index) => (
+          {optionStats.map((stat, index) => (
             <div key={stat.optionId} className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-3">
@@ -214,7 +215,10 @@ const SurveyAnalytics = () => {
                     <td className="px-4 py-3 text-sm text-gray-700">{response.selectedOption}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {response.answeredAt
-                        ? new Date(response.answeredAt.seconds * 1000).toLocaleString()
+                        ? (response.answeredAt.seconds
+                            ? new Date(response.answeredAt.seconds * 1000)
+                            : new Date(response.answeredAt)
+                          ).toLocaleString()
                         : 'N/A'}
                     </td>
                   </tr>
