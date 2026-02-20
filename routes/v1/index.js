@@ -6,6 +6,7 @@ const postsRoutes = require('./postsRoutes');
 const feedRoutes = require('./feedRoutes');
 const followRoutes = require('./followRoutes');
 const groupRoutes = require('./groupRoutes');
+const adRoutes = require('./adRoutes');
 const chatRoutes = require('./chatRoutes');
 const interactionsRoutes = require('./interactionsRoutes');
 const debugRoutes = require('./debugRoutes');
@@ -20,6 +21,7 @@ router.use('/posts', postsRoutes);
 router.use('/feed', feedRoutes);
 router.use('/users', followRoutes);
 router.use('/groups', groupRoutes);
+router.use('/ads', adRoutes);
 
 // Interactions (likes, comments, shares, views, polls)
 router.use('/', interactionsRoutes);

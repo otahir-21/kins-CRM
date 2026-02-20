@@ -154,6 +154,11 @@ app.get('/api-info', (req, res) => {
         feed: { method: 'GET', url: `${baseUrl}/api/v1/feed?page=1&limit=20` },
         suggestions: { method: 'GET', url: `${baseUrl}/api/v1/users/suggestions?limit=20`, note: 'Suggested for you (automatic: shared interests + popular)' },
         nearby: { method: 'GET', url: `${baseUrl}/api/v1/users/nearby?latitude=25.2&longitude=55.3&radiusKm=50&limit=100`, note: 'Nearby kins for map pins (locationIsVisible: true)' },
+        adsActive: { method: 'GET', url: `${baseUrl}/api/v1/ads/active`, note: 'Public: active ads for app (no auth)' },
+        adsList: { method: 'GET', url: `${baseUrl}/api/v1/ads`, note: 'CRM: list ads (JWT)' },
+        adsCreate: { method: 'POST', url: `${baseUrl}/api/v1/ads`, body: 'multipart: image, link, title?, isActive?, order?', note: 'CRM: create ad (JWT)' },
+        adsUpdate: { method: 'PUT', url: `${baseUrl}/api/v1/ads/:id`, note: 'CRM: update ad (JWT)' },
+        adsDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/ads/:id`, note: 'CRM: delete ad (JWT)' },
         chatNotify: { method: 'POST', url: `${baseUrl}/api/v1/chat/notify`, body: 'type, recipientIds, senderId, senderName, messagePreview, conversationId|groupId+groupName', note: 'See docs/CHAT_NOTIFICATIONS.md' }
       },
       surveys: {
