@@ -162,6 +162,9 @@ app.get('/api-info', (req, res) => {
         adsCreate: { method: 'POST', url: `${baseUrl}/api/v1/ads`, body: 'multipart: image, link, title?, isActive?, order?', note: 'CRM: create ad (JWT)' },
         adsUpdate: { method: 'PUT', url: `${baseUrl}/api/v1/ads/:id`, note: 'CRM: update ad (JWT)' },
         adsDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/ads/:id`, note: 'CRM: delete ad (JWT)' },
+        surveysForMe: { method: 'GET', url: `${baseUrl}/api/v1/surveys/for-me`, note: 'App: surveys not yet answered (JWT)' },
+        surveyById: { method: 'GET', url: `${baseUrl}/api/v1/surveys/:surveyId` },
+        surveyRespond: { method: 'POST', url: `${baseUrl}/api/v1/surveys/:surveyId/respond`, body: { responses: [{ questionId: 'q0', optionId: 'opt0' }] }, note: 'App: submit response (JWT)' },
         chatNotify: { method: 'POST', url: `${baseUrl}/api/v1/chat/notify`, body: 'type, recipientIds, senderId, senderName, messagePreview, conversationId|groupId+groupName', note: 'See docs/CHAT_NOTIFICATIONS.md' }
       },
       surveys: {
@@ -736,6 +739,10 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
 });
 
 // ==================== ADS (legacy for CRM dashboard) ====================
+// Redirect trailing slash so /api/ads/ and /api/ads both work
+app.get('/api/ads/', (req, res) => res.redirect(301, '/api/ads'));
+app.get('/api/ads/active/', (req, res) => res.redirect(301, '/api/ads/active'));
+
 function toAdResponse(doc) {
   if (!doc || !doc._id) return null;
   return {
@@ -948,24 +955,23 @@ app.delete('/api/surveys/:surveyId', async (req, res) => {
   }
 });
 
-// Submit survey response
+// Submit survey response (legacy: userId + selectedOptionId for single question, or userId + responses[] for multi)
 app.post('/api/surveys/:surveyId/respond', async (req, res) => {
   try {
     const { surveyId } = req.params;
-    const { userId, selectedOptionId } = req.body;
-    
-    if (!userId || !selectedOptionId) {
-      return res.status(400).json({
-        success: false,
-        error: 'userId and selectedOptionId are required',
-      });
+    const { userId, selectedOptionId, responses } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'userId is required' });
     }
-
-    const response = await submitSurveyResponse(userId, surveyId, selectedOptionId);
+    const payload = Array.isArray(responses) && responses.length > 0 ? responses : selectedOptionId;
+    if (payload == null) {
+      return res.status(400).json({ success: false, error: 'selectedOptionId or responses array is required' });
+    }
+    const response = await submitSurveyResponse(userId, surveyId, payload);
     res.status(201).json({ success: true, data: response });
   } catch (error) {
     console.error('Error in POST /api/surveys/:surveyId/respond:', error);
-    const statusCode = error.message.includes('already responded') ? 400 : 500;
+    const statusCode = error.message.includes('already responded') ? 409 : (error.message.includes('Invalid') || error.message.includes('Missing') ? 400 : 500);
     res.status(statusCode).json({ success: false, error: error.message });
   }
 });
@@ -1027,14 +1033,15 @@ if (fs.existsSync(frontendDist)) {
   });
 }
 
-// 404 handler
+// 404 handler (include path/method so client can see what failed)
 app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
+  const path = req.path || req.url?.split('?')[0] || req.originalUrl?.split('?')[0];
+  res.status(404).json({
+    success: false,
     error: 'Endpoint not found',
     method: req.method,
-    path: req.path,
-    hint: 'Check API base URL (e.g. VITE_API_URL) and restart the backend after code changes.',
+    path: path || req.url,
+    hint: 'Check the path above. Legacy CRM: /api/ads, /api/users, /api/statistics, etc. App: /api/v1/...',
   });
 });
 
