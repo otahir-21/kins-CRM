@@ -10,6 +10,7 @@ const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirt
 function toUserResponse(user) {
   if (!user) return null;
   const u = user._id ? user : { _id: user.id, ...user };
+  const loc = u.location;
   return {
     id: u._id.toString(),
     provider: u.provider,
@@ -30,6 +31,10 @@ function toUserResponse(user) {
     followingCount: u.followingCount ?? 0,
     interests: (u.interests || []).map((i) => (i && i._id ? i._id.toString() : i.toString())),
     interestsUpdatedAt: u.interestsUpdatedAt ?? null,
+    latitude: loc?.latitude ?? null,
+    longitude: loc?.longitude ?? null,
+    locationIsVisible: loc?.isVisible ?? false,
+    locationUpdatedAt: loc?.updatedAt ?? null,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   };
@@ -88,7 +93,7 @@ async function getFirebaseToken(req, res) {
 
 /**
  * PUT /me/about - update profile fields
- * Body: { name?, username?, bio?, status?, gender?, dateOfBirth?, profilePictureUrl?, documentUrl? }
+ * Body: { name?, username?, bio?, status?, gender?, dateOfBirth?, profilePictureUrl?, documentUrl?, latitude?, longitude?, locationIsVisible? }
  */
 async function updateMeAbout(req, res) {
   const filtered = {};
@@ -109,12 +114,31 @@ async function updateMeAbout(req, res) {
     }
     filtered.dateOfBirth = v && typeof v === 'string' ? v.trim() || null : null;
   }
+
+  if (req.body.latitude !== undefined || req.body.longitude !== undefined || req.body.locationIsVisible !== undefined) {
+    const current = await User.findById(req.userId).select('location').lean();
+    const loc = current?.location || {};
+    let lat = req.body.latitude !== undefined ? Number(req.body.latitude) : (loc.latitude ?? null);
+    let lng = req.body.longitude !== undefined ? Number(req.body.longitude) : (loc.longitude ?? null);
+    if (lat !== null && (Number.isNaN(lat) || lat < -90 || lat > 90)) {
+      return res.status(400).json({ success: false, error: 'latitude must be between -90 and 90.' });
+    }
+    if (lng !== null && (Number.isNaN(lng) || lng < -180 || lng > 180)) {
+      return res.status(400).json({ success: false, error: 'longitude must be between -180 and 180.' });
+    }
+    const isVisible = req.body.locationIsVisible !== undefined ? Boolean(req.body.locationIsVisible) : (loc.isVisible ?? false);
+    filtered['location.latitude'] = lat;
+    filtered['location.longitude'] = lng;
+    filtered['location.isVisible'] = isVisible;
+    filtered['location.updatedAt'] = new Date();
+  }
+
   if (Object.keys(filtered).length === 0) {
     return res.status(400).json({ success: false, error: 'No valid fields to update.' });
   }
 
   filtered.updatedAt = new Date();
-  const user = await User.findByIdAndUpdate(req.userId, filtered, { new: true }).lean();
+  const user = await User.findByIdAndUpdate(req.userId, { $set: filtered }, { new: true }).lean();
   return res.status(200).json({ success: true, user: toUserResponse(user) });
 }
 
