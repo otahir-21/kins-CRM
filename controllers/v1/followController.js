@@ -393,6 +393,83 @@ async function searchUsers(req, res) {
 }
 
 /**
+ * GET /api/v1/users/suggestions
+ * Suggested users for "Suggested for you" (automatic, scalable).
+ * Returns users the current user does not follow: first those who share interests, then popular users. Limit 20.
+ * Each item has id, name, username, displayName, profilePictureUrl, bio, followerCount, followingCount, isFollowedByMe (false).
+ */
+async function getSuggestions(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const myId = new mongoose.Types.ObjectId(currentUserId);
+
+    const [me, followingIds] = await Promise.all([
+      User.findById(currentUserId).select('interests').lean(),
+      Follow.find({ followerId: myId }).select('followingId').lean(),
+    ]);
+
+    const excludeIds = new Set([currentUserId.toString()]);
+    (followingIds || []).forEach((f) => excludeIds.add(f.followingId.toString()));
+    const myInterestIds = (me && me.interests) || [];
+
+    const excludeArr = Array.from(excludeIds).filter((id) => isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id));
+    if (excludeArr.length === 0) {
+      excludeArr.push(myId);
+    }
+
+    const suggested = [];
+    const seenIds = new Set(excludeIds);
+
+    if (myInterestIds.length > 0) {
+      const withSharedInterests = await User.find({
+        _id: { $nin: excludeArr },
+        interests: { $in: myInterestIds },
+      })
+        .select('name username profilePictureUrl bio followerCount followingCount')
+        .sort({ followerCount: -1 })
+        .limit(limit)
+        .lean();
+      withSharedInterests.forEach((u) => {
+        if (!seenIds.has(u._id.toString())) {
+          seenIds.add(u._id.toString());
+          suggested.push(toPublicUser({ ...u, isFollowedByMe: false }));
+        }
+      });
+    }
+
+    if (suggested.length < limit) {
+      const need = limit - suggested.length;
+      const popular = await User.find({
+        _id: { $nin: excludeArr },
+      })
+        .select('name username profilePictureUrl bio followerCount followingCount')
+        .sort({ followerCount: -1 })
+        .limit(need + excludeArr.length)
+        .lean();
+      let added = 0;
+      for (const u of popular) {
+        if (added >= need) break;
+        const id = u._id.toString();
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          suggested.push(toPublicUser({ ...u, isFollowedByMe: false }));
+          added += 1;
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      suggestions: suggested.slice(0, limit),
+    });
+  } catch (err) {
+    console.error('GET /users/suggestions error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to get suggestions.' });
+  }
+}
+
+/**
  * GET /api/v1/users/:userId
  * Public profile for a user (name, username, displayName, bio, avatar, counts, isFollowedByMe).
  * For chat: use user.displayName (name → username → 'User') so the other user's label is never "User" when we have username.
@@ -435,5 +512,6 @@ module.exports = {
   getFollowing,
   getFollowStatus,
   getPublicProfile,
+  getSuggestions,
   searchUsers,
 };

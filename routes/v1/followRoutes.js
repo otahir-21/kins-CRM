@@ -7,6 +7,7 @@ const {
   getFollowing,
   getFollowStatus,
   getPublicProfile,
+  getSuggestions,
   searchUsers,
 } = require('../../controllers/v1/followController');
 
@@ -16,6 +17,8 @@ router.use(verifyJwt);
 
 // Search users by username, name, or phone (must be before /:userId)
 router.get('/search', searchUsers);
+// Suggested for you (must be before /:userId)
+router.get('/suggestions', getSuggestions);
 // More specific routes first (so path segments are not parsed as userId)
 router.get('/:userId/follow/status', getFollowStatus);
 router.post('/:userId/follow', followUser);

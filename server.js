@@ -152,6 +152,7 @@ app.get('/api-info', (req, res) => {
         postsGet: { method: 'GET', url: `${baseUrl}/api/v1/posts/:id` },
         postsDelete: { method: 'DELETE', url: `${baseUrl}/api/v1/posts/:id` },
         feed: { method: 'GET', url: `${baseUrl}/api/v1/feed?page=1&limit=20` },
+        suggestions: { method: 'GET', url: `${baseUrl}/api/v1/users/suggestions?limit=20`, note: 'Suggested for you (automatic: shared interests + popular)' },
         chatNotify: { method: 'POST', url: `${baseUrl}/api/v1/chat/notify`, body: 'type, recipientIds, senderId, senderName, messagePreview, conversationId|groupId+groupName', note: 'See docs/CHAT_NOTIFICATIONS.md' }
       },
       surveys: {
