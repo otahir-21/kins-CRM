@@ -8,6 +8,7 @@ const {
   getFollowStatus,
   getPublicProfile,
   getSuggestions,
+  getNearby,
   searchUsers,
 } = require('../../controllers/v1/followController');
 
@@ -19,6 +20,8 @@ router.use(verifyJwt);
 router.get('/search', searchUsers);
 // Suggested for you (must be before /:userId)
 router.get('/suggestions', getSuggestions);
+// Nearby kins for map pins (must be before /:userId)
+router.get('/nearby', getNearby);
 // More specific routes first (so path segments are not parsed as userId)
 router.get('/:userId/follow/status', getFollowStatus);
 router.post('/:userId/follow', followUser);

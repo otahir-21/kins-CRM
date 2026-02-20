@@ -43,6 +43,20 @@ function toPublicUser(user) {
 }
 
 /**
+ * Haversine distance in km between two lat/lng points.
+ */
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * POST /users/:userId/follow
  * Current user (req.userId) follows the user with id = :userId.
  * - Cannot follow yourself.
@@ -470,6 +484,71 @@ async function getSuggestions(req, res) {
 }
 
 /**
+ * GET /api/v1/users/nearby
+ * Kins who have shared location and are within radius (for map pins).
+ * Query: latitude, longitude (optional – default to current user's location), radiusKm (default 50), limit (default 100).
+ * Returns users with id, name, username, displayName, profilePictureUrl, latitude, longitude, distanceKm, isFollowedByMe.
+ */
+async function getNearby(req, res) {
+  try {
+    const currentUserId = req.userId;
+    let lat = parseFloat(req.query.latitude);
+    let lon = parseFloat(req.query.longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) {
+      const me = await User.findById(currentUserId).select('location').lean();
+      lat = me?.location?.latitude;
+      lon = me?.location?.longitude;
+    }
+    if (lat == null || lon == null || Number.isNaN(lat) || Number.isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      return res.status(400).json({
+        success: false,
+        error: 'Location required. Set latitude and longitude in query, or save your location via PUT /me/about (latitude, longitude, locationIsVisible: true).',
+      });
+    }
+    const radiusKm = Math.min(500, Math.max(1, parseFloat(req.query.radiusKm) || 50));
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+    const users = await User.find({
+      _id: { $ne: currentUserId },
+      'location.latitude': { $ne: null },
+      'location.longitude': { $ne: null },
+      'location.isVisible': true,
+    })
+      .select('name username profilePictureUrl location')
+      .lean();
+
+    const followList = await Follow.find({ followerId: currentUserId }).select('followingId').lean();
+    const followSet = new Set(followList.map((f) => f.followingId.toString()));
+
+    const withDistance = users
+      .map((u) => {
+        const uLat = u.location?.latitude;
+        const uLon = u.location?.longitude;
+        if (uLat == null || uLon == null) return null;
+        const km = distanceKm(lat, lon, uLat, uLon);
+        if (km > radiusKm) return null;
+        return {
+          ...toPublicUser({ ...u, isFollowedByMe: followSet.has(u._id.toString()) }),
+          latitude: uLat,
+          longitude: uLon,
+          distanceKm: Math.round(km * 10) / 10,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, limit);
+
+    return res.status(200).json({
+      success: true,
+      nearby: withDistance,
+    });
+  } catch (err) {
+    console.error('GET /users/nearby error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to get nearby kins.' });
+  }
+}
+
+/**
  * GET /api/v1/users/:userId
  * Public profile for a user (name, username, displayName, bio, avatar, counts, isFollowedByMe).
  * For chat: use user.displayName (name → username → 'User') so the other user's label is never "User" when we have username.
@@ -513,5 +592,6 @@ module.exports = {
   getFollowStatus,
   getPublicProfile,
   getSuggestions,
+  getNearby,
   searchUsers,
 };
