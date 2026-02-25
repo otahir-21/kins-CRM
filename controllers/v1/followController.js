@@ -487,8 +487,11 @@ async function getSuggestions(req, res) {
 /**
  * GET /api/v1/users/nearby
  * Kins who have shared location and are within radius (for map pins).
- * Query: latitude, longitude (optional – default to current user's location), radiusKm (default 50), limit (default 100).
- * Returns users with id, name, username, displayName, profilePictureUrl, latitude, longitude, distanceKm, isFollowedByMe.
+ * Query: latitude, longitude (optional – default to current user's location), radiusKm (1–500, default 50), limit (1–200, default 100).
+ * Returns { success, nearby } with each item: id, providerUserId, name, username, displayName, profilePictureUrl, latitude, longitude, distanceKm, isFollowedByMe.
+ *
+ * Visibility: only users with location.isVisible === true are included. To test with all users who have lat/lng set,
+ * call with ?visibility=all (ignores isVisible so you can verify storage/query without toggling visibility).
  */
 async function getNearby(req, res) {
   try {
@@ -508,13 +511,18 @@ async function getNearby(req, res) {
     }
     const radiusKm = Math.min(500, Math.max(1, parseFloat(req.query.radiusKm) || 50));
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+    const includeAllVisibility = req.query.visibility === 'all';
 
-    const users = await User.find({
+    const filter = {
       _id: { $ne: currentUserId },
       'location.latitude': { $ne: null },
       'location.longitude': { $ne: null },
-      'location.isVisible': true,
-    })
+    };
+    if (!includeAllVisibility) {
+      filter['location.isVisible'] = true;
+    }
+
+    const users = await User.find(filter)
       .select('name username profilePictureUrl location providerUserId')
       .lean();
 

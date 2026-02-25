@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Group = require('../../models/Group');
+const GroupReport = require('../../models/GroupReport');
 const BunnyService = require('../../services/BunnyService');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 
@@ -618,4 +619,93 @@ async function deleteGroup(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup };
+/**
+ * POST /api/v1/groups/:groupId/report
+ * Report a group. Body: { reason?: string }. One report per user per group (idempotent).
+ */
+async function reportGroup(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const groupId = req.params.groupId;
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 500) || null : null;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const reporterId = new mongoose.Types.ObjectId(currentUserId);
+    const groupIdObj = new mongoose.Types.ObjectId(groupId);
+
+    const existing = await GroupReport.findOne({ reporterId, groupId: groupIdObj }).lean();
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: 'You have already reported this group.',
+        reported: true,
+      });
+    }
+
+    await GroupReport.create({ reporterId, groupId: groupIdObj, reason });
+    await Group.findByIdAndUpdate(groupId, { $inc: { reportCount: 1 } });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Group reported.',
+      reported: true,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(200).json({ success: true, message: 'You have already reported this group.', reported: true });
+    }
+    console.error('POST /groups/:groupId/report error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to report group.' });
+  }
+}
+
+/**
+ * GET /api/v1/groups/reported
+ * List groups that have been reported (reportCount > 0). Paginated. For moderation.
+ */
+async function getReportedGroups(req, res) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const [groups, total] = await Promise.all([
+      Group.find({ reportCount: { $gt: 0 } }).sort({ reportCount: -1, updatedAt: -1 }).skip(skip).limit(limit).lean(),
+      Group.countDocuments({ reportCount: { $gt: 0 } }),
+    ]);
+
+    const list = groups.map((g) => ({
+      id: g._id.toString(),
+      name: g.name,
+      description: g.description ?? null,
+      type: g.type,
+      memberCount: (g.members || []).length,
+      imageUrl: g.groupImageUrl ?? null,
+      reportCount: g.reportCount ?? 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      groups: list,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + list.length < total,
+      },
+    });
+  } catch (err) {
+    console.error('GET /groups/reported error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to list reported groups.' });
+  }
+}
+
+module.exports = { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup, reportGroup, getReportedGroups };

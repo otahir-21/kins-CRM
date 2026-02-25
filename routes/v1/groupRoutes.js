@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup } = require('../../controllers/v1/groupController');
+const { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup, reportGroup, getReportedGroups } = require('../../controllers/v1/groupController');
 
 const router = express.Router();
 
@@ -18,6 +18,8 @@ router.use(verifyJwt);
 
 // List groups (optional: member=me, search, type, page, limit)
 router.get('/', getGroups);
+// List reported groups (for moderation). Must be before /:groupId.
+router.get('/reported', getReportedGroups);
 // Create group: name, description?, type (interactive|updates_only), optional image (field: image)
 router.post('/', upload.single('image'), createGroup);
 // Add member(s) to group. Body: { userId } or { userIds: [id1, id2] }. Admin only.
@@ -32,6 +34,8 @@ router.post('/:groupId/avatar', upload.single('image'), uploadGroupAvatar);
 router.put('/:groupId', upload.any(), updateGroup);
 // Delete group. Admin only.
 router.delete('/:groupId', deleteGroup);
+// Report group. Body: { reason?: string }. Idempotent (one report per user per group).
+router.post('/:groupId/report', reportGroup);
 // Group detail + members list (only for group members; admin can use to add people)
 router.get('/:groupId', getGroupById);
 

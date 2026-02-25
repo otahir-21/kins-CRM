@@ -14,6 +14,7 @@ const groupSchema = new mongoose.Schema(
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
     admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    reportCount: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );
