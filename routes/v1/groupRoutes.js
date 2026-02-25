@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup } = require('../../controllers/v1/groupController');
+const { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup } = require('../../controllers/v1/groupController');
 
 const router = express.Router();
 
@@ -22,6 +22,8 @@ router.get('/', getGroups);
 router.post('/', upload.single('image'), createGroup);
 // Add member(s) to group. Body: { userId } or { userIds: [id1, id2] }. Admin only.
 router.post('/:groupId/members', addMembers);
+// Remove member. DELETE :groupId/members/:userId — self = leave; other = admin only.
+router.delete('/:groupId/members/:userId', removeMember);
 // Join group (current user). Idempotent.
 router.post('/:groupId/join', joinGroup);
 // Upload group avatar only. POST + multipart works reliably (use this from Flutter). Field name: "image".

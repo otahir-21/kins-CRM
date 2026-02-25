@@ -330,6 +330,70 @@ async function joinGroup(req, res) {
 }
 
 /**
+ * DELETE /api/v1/groups/:groupId/members/:userId
+ * Remove a member from the group.
+ * - If :userId is the current user: they leave the group (any member can do this).
+ * - If :userId is someone else: only group admins can remove them.
+ * When removed, the user is also removed from admins if they were an admin.
+ */
+async function removeMember(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const { groupId, userId: targetUserId } = req.params;
+
+    if (!groupId || !isValidObjectId(groupId)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+    if (!targetUserId || !isValidObjectId(targetUserId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+    }
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    const memberIds = (group.members || []).map((id) => id.toString());
+    const adminIds = (group.admins || []).map((id) => id.toString());
+    const isTargetMember = memberIds.includes(targetUserId);
+    const isCurrentUser = currentUserId.toString() === targetUserId;
+
+    if (!isTargetMember) {
+      return res.status(404).json({ success: false, error: 'User is not a member of this group.' });
+    }
+
+    if (!isCurrentUser && !adminIds.includes(currentUserId.toString())) {
+      return res.status(403).json({ success: false, error: 'Only group admins can remove other members.' });
+    }
+
+    const targetId = new mongoose.Types.ObjectId(targetUserId);
+    const result = await Group.findByIdAndUpdate(
+      groupId,
+      { $pull: { members: targetId, admins: targetId } },
+      { new: true }
+    ).lean();
+
+    const memberCount = (result.members || []).length;
+
+    return res.status(200).json({
+      success: true,
+      message: isCurrentUser ? 'You left the group.' : 'Member removed.',
+      group: {
+        id: result._id.toString(),
+        name: result.name,
+        description: result.description ?? null,
+        type: result.type,
+        memberCount,
+        imageUrl: result.groupImageUrl ?? null,
+      },
+    });
+  } catch (err) {
+    console.error('DELETE /groups/:groupId/members/:userId error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to remove member.' });
+  }
+}
+
+/**
  * Get uploaded file from multer req (single, fields, or any).
  * Returns { buffer, originalname } or null.
  */
@@ -554,4 +618,4 @@ async function deleteGroup(req, res) {
   }
 }
 
-module.exports = { createGroup, getGroups, getGroupById, addMembers, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup };
+module.exports = { createGroup, getGroups, getGroupById, addMembers, removeMember, joinGroup, updateGroup, uploadGroupAvatar, deleteGroup };
