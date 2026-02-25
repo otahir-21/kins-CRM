@@ -81,6 +81,7 @@ async function verifyOtpAndGetOrCreateUser(phone, code) {
     throw new Error('JWT_SECRET is not configured.');
   }
 
+  console.time('jwt.sign');
   const accessToken = jwt.sign(
     {
       sub: user.id,
@@ -89,6 +90,7 @@ async function verifyOtpAndGetOrCreateUser(phone, code) {
     jwtSecret,
     { expiresIn: jwtExpiresIn }
   );
+  console.timeEnd('jwt.sign');
 
   const decoded = jwt.verify(accessToken, jwtSecret);
   const expiresIn = jwtExpiresIn;

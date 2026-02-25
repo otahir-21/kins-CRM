@@ -65,13 +65,15 @@ const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const Ad = require('./models/Ad');
 const BunnyService = require('./services/BunnyService');
-const { connectMongo } = require('./config/db');
+// Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
+const { connectDB } = require('./config/db');
 const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
+const { requestTimingMiddleware } = require('./middleware/requestTimingMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
 const v1Routes = require('./routes/v1');
 
 if (process.env.MONGODB_URI) {
-  connectMongo().catch((err) => console.error('MongoDB connection failed:', err.message));
+  connectDB().catch((err) => console.error('MongoDB connection failed:', err.message));
 }
 
 const app = express();
@@ -92,8 +94,20 @@ app.use(cors());
 app.use(compression()); // gzip responses – smaller payloads, faster over network
 app.use(express.json());
 
+// Request timing: log total request duration (ms) for performance auditing
+app.use(requestTimingMiddleware);
+
 // Ensure MongoDB connection for all routes (critical for Vercel serverless)
 app.use(ensureMongo);
+
+// Performance logging: log duration before routes run
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`[PERF] ${req.method} ${req.originalUrl} - ${Date.now() - start}ms`);
+  });
+  next();
+});
 
 // Auth routes (Twilio Verify + JWT)
 app.use('/auth', authRoutes);

@@ -1,9 +1,10 @@
 /**
  * Middleware to ensure MongoDB connection is established before processing requests.
  * Critical for serverless environments (Vercel) where cold starts can cause timing issues.
+ * Calls connectDB() so all API routes get a cached connection before any DB access.
  */
 
-const { connectMongo } = require('../config/db');
+const { connectDB } = require('../lib/mongodb');
 
 async function ensureMongo(req, res, next) {
   try {
@@ -12,8 +13,8 @@ async function ensureMongo(req, res, next) {
       return next();
     }
 
-    // Ensure MongoDB is connected before processing request
-    await connectMongo();
+    // Ensure MongoDB is connected before processing request (uses global cache)
+    await connectDB();
     next();
   } catch (err) {
     console.error('MongoDB connection failed in middleware:', err.message);

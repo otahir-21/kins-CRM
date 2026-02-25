@@ -24,8 +24,8 @@ const surveySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, default: null, trim: true },
-    isActive: { type: Boolean, default: true },
-    showOnHomePage: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true, index: true },
+    showOnHomePage: { type: Boolean, default: false, index: true },
     questions: {
       type: [questionSchema],
       required: true,
@@ -43,5 +43,6 @@ const surveySchema = new mongoose.Schema(
 
 surveySchema.index({ isActive: 1 });
 surveySchema.index({ showOnHomePage: 1 });
+surveySchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Survey', surveySchema);

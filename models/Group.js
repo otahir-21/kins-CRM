@@ -13,8 +13,8 @@ const groupSchema = new mongoose.Schema(
     groupImageUrl: { type: String, default: null },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
     admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    reportCount: { type: Number, default: 0, min: 0 },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    reportCount: { type: Number, default: 0, min: 0, index: true },
   },
   { timestamps: true }
 );
@@ -22,6 +22,8 @@ const groupSchema = new mongoose.Schema(
 groupSchema.index({ createdBy: 1 });
 groupSchema.index({ members: 1 });
 groupSchema.index({ nameLower: 1 }, { unique: true, sparse: true });
+groupSchema.index({ createdAt: -1 });
+groupSchema.index({ reportCount: -1, updatedAt: -1 });
 
 groupSchema.pre('save', function (next) {
   if (this.name) {

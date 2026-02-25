@@ -19,5 +19,7 @@ const surveyResponseSchema = new mongoose.Schema(
 );
 
 surveyResponseSchema.index({ userId: 1, surveyId: 1 }, { unique: true });
+surveyResponseSchema.index({ userId: 1, createdAt: -1 });
+surveyResponseSchema.index({ surveyId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('SurveyResponse', surveyResponseSchema);

@@ -16,13 +16,13 @@ async function likePost(req, res) {
     }
 
     // Check if post exists
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).select('_id isActive').lean();
     if (!post || !post.isActive) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
 
     // Check if already liked
-    const existingLike = await Like.findOne({ userId, postId });
+    const existingLike = await Like.findOne({ userId, postId }).select('_id').lean();
     if (existingLike) {
       return res.status(400).json({ success: false, error: 'You already liked this post.' });
     }
@@ -84,15 +84,15 @@ async function getPostLikes(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
 
-    // Get likes with user info
-    const likes = await Like.find({ postId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
-      .lean();
-
-    const total = await Like.countDocuments({ postId });
+    const [likes, total] = await Promise.all([
+      Like.find({ postId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name username profilePictureUrl')
+        .lean(),
+      Like.countDocuments({ postId }),
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -126,7 +126,7 @@ async function getLikeStatus(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
 
-    const like = await Like.findOne({ userId, postId });
+    const like = await Like.findOne({ userId, postId }).select('createdAt').lean();
 
     return res.status(200).json({
       success: true,

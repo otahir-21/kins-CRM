@@ -26,7 +26,7 @@ async function createComment(req, res) {
     }
 
     // Check if post exists
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).select('_id isActive').lean();
     if (!post || !post.isActive) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
@@ -38,7 +38,7 @@ async function createComment(req, res) {
         return res.status(400).json({ success: false, error: 'Invalid parent comment ID.' });
       }
 
-      parentComment = await Comment.findById(parentCommentId);
+      parentComment = await Comment.findById(parentCommentId).select('postId isActive').lean();
       if (!parentComment || !parentComment.isActive) {
         return res.status(404).json({ success: false, error: 'Parent comment not found.' });
       }
@@ -97,26 +97,25 @@ async function getPostComments(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
 
-    // Get top-level comments (no parent)
-    const comments = await Comment.find({
-      postId,
-      parentCommentId: null,
-      isActive: true,
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
-      .lean();
-
-    const total = await Comment.countDocuments({
-      postId,
-      parentCommentId: null,
-      isActive: true,
-    });
-
-    // Check if current user liked each comment
     const userId = req.userId;
+    const [comments, total] = await Promise.all([
+      Comment.find({
+        postId,
+        parentCommentId: null,
+        isActive: true,
+      })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name username profilePictureUrl')
+        .lean(),
+      Comment.countDocuments({
+        postId,
+        parentCommentId: null,
+        isActive: true,
+      }),
+    ]);
+
     const commentIds = comments.map((c) => c._id);
     const userLikes = await CommentLike.find({ userId, commentId: { $in: commentIds } }).select('commentId').lean();
     const likedCommentIds = new Set(userLikes.map((like) => like.commentId.toString()));
@@ -157,24 +156,23 @@ async function getCommentReplies(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid comment ID.' });
     }
 
-    // Get replies
-    const replies = await Comment.find({
-      parentCommentId: commentId,
-      isActive: true,
-    })
-      .sort({ createdAt: 1 }) // Oldest first for replies
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
-      .lean();
-
-    const total = await Comment.countDocuments({
-      parentCommentId: commentId,
-      isActive: true,
-    });
-
-    // Check if current user liked each reply
     const userId = req.userId;
+    const [replies, total] = await Promise.all([
+      Comment.find({
+        parentCommentId: commentId,
+        isActive: true,
+      })
+        .sort({ createdAt: 1 }) // Oldest first for replies
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name username profilePictureUrl')
+        .lean(),
+      Comment.countDocuments({
+        parentCommentId: commentId,
+        isActive: true,
+      }),
+    ]);
+
     const replyIds = replies.map((r) => r._id);
     const userLikes = await CommentLike.find({ userId, commentId: { $in: replyIds } }).select('commentId').lean();
     const likedReplyIds = new Set(userLikes.map((like) => like.commentId.toString()));

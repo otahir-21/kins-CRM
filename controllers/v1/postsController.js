@@ -196,19 +196,19 @@ async function getMyPosts(req, res) {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    // Get user's posts
-    const posts = await Post.find({
-      userId,
-      isActive: true,
-    })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
-      .populate('interests', 'name')
-      .lean();
-
-    const total = await Post.countDocuments({ userId, isActive: true });
+    const [posts, total] = await Promise.all([
+      Post.find({
+        userId,
+        isActive: true,
+      })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name username profilePictureUrl')
+        .populate('interests', 'name')
+        .lean(),
+      Post.countDocuments({ userId, isActive: true }),
+    ]);
 
     return res.status(200).json({
       success: true,

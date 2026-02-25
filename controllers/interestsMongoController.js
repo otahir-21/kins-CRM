@@ -40,7 +40,7 @@ async function create(req, res) {
     }
     const trimmed = name.trim();
     const nameNormalized = trimmed.toLowerCase();
-    const existing = await Interest.findOne({ nameNormalized });
+    const existing = await Interest.findOne({ nameNormalized }).select('_id').lean();
     if (existing) {
       return res.status(409).json({ success: false, error: 'An interest with this name already exists.' });
     }
@@ -74,7 +74,7 @@ async function update(req, res) {
   if (name !== undefined) {
     const trimmed = typeof name === 'string' ? name.trim() : interest.name;
     const nameNormalized = trimmed.toLowerCase();
-    const duplicate = await Interest.findOne({ nameNormalized, _id: { $ne: id } });
+    const duplicate = await Interest.findOne({ nameNormalized, _id: { $ne: id } }).select('_id').lean();
     if (duplicate) {
       return res.status(409).json({ success: false, error: 'An interest with this name already exists.' });
     }

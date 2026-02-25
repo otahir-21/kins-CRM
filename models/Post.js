@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    type: { type: String, required: true, enum: ['text', 'image', 'video', 'poll'] },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, required: true, enum: ['text', 'image', 'video', 'poll'], index: true },
     
     // Text content (for all types)
     content: { type: String, default: null },
@@ -40,7 +40,7 @@ const postSchema = new mongoose.Schema(
     viewsCount: { type: Number, default: 0, min: 0 },
     
     // Soft delete
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }
 );
@@ -49,5 +49,6 @@ const postSchema = new mongoose.Schema(
 postSchema.index({ interests: 1, createdAt: -1 });
 postSchema.index({ userId: 1, createdAt: -1 });
 postSchema.index({ isActive: 1, createdAt: -1 });
+postSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Post', postSchema);

@@ -27,7 +27,7 @@ async function sharePost(req, res) {
     }
 
     // Check if post exists
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).select('_id isActive').lean();
     if (!post || !post.isActive) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
@@ -74,15 +74,15 @@ async function getPostShares(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
 
-    // Get shares with user info
-    const shares = await Share.find({ postId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
-      .lean();
-
-    const total = await Share.countDocuments({ postId });
+    const [shares, total] = await Promise.all([
+      Share.find({ postId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name username profilePictureUrl')
+        .lean(),
+      Share.countDocuments({ postId }),
+    ]);
 
     return res.status(200).json({
       success: true,

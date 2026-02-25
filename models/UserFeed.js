@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const userFeedSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true },
+    postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', required: true, index: true },
     
     // Ranking/scoring (higher = more relevant)
     score: { type: Number, required: true, default: 0 },

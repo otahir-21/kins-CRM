@@ -187,14 +187,15 @@ async function getFollowers(req, res) {
     const targetId = new mongoose.Types.ObjectId(targetUserId);
     const currentId = new mongoose.Types.ObjectId(currentUserId);
 
-    const followDocs = await Follow.find({ followingId: targetId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('followerId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
-      .lean();
-
-    const total = await Follow.countDocuments({ followingId: targetId });
+    const [followDocs, total] = await Promise.all([
+      Follow.find({ followingId: targetId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('followerId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
+        .lean(),
+      Follow.countDocuments({ followingId: targetId }),
+    ]);
     const followerIds = followDocs.map((f) => f.followerId && f.followerId._id).filter(Boolean);
 
     let isFollowedByMeMap = {};
@@ -253,14 +254,15 @@ async function getFollowing(req, res) {
     const targetId = new mongoose.Types.ObjectId(targetUserId);
     const currentId = new mongoose.Types.ObjectId(currentUserId);
 
-    const followDocs = await Follow.find({ followerId: targetId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('followingId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
-      .lean();
-
-    const total = await Follow.countDocuments({ followerId: targetId });
+    const [followDocs, total] = await Promise.all([
+      Follow.find({ followerId: targetId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('followingId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
+        .lean(),
+      Follow.countDocuments({ followerId: targetId }),
+    ]);
     const followingIds = followDocs.map((f) => f.followingId && f.followingId._id).filter(Boolean);
 
     let isFollowedByMeMap = {};
@@ -313,17 +315,18 @@ async function getFollowStatus(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid user ID.' });
     }
 
-    const targetUser = await User.findById(targetUserId)
-      .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
-      .lean();
+    const [targetUser, follow] = await Promise.all([
+      User.findById(targetUserId)
+        .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
+        .lean(),
+      Follow.findOne({
+        followerId: currentUserId,
+        followingId: targetUserId,
+      }).lean(),
+    ]);
     if (!targetUser) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
-
-    const follow = await Follow.findOne({
-      followerId: currentUserId,
-      followingId: targetUserId,
-    }).lean();
 
     return res.status(200).json({
       success: true,
@@ -571,17 +574,18 @@ async function getPublicProfile(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid user ID.' });
     }
 
-    const targetUser = await User.findById(targetUserId)
-      .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
-      .lean();
+    const [targetUser, follow] = await Promise.all([
+      User.findById(targetUserId)
+        .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
+        .lean(),
+      Follow.findOne({
+        followerId: currentUserId,
+        followingId: targetUserId,
+      }).lean(),
+    ]);
     if (!targetUser) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
-
-    const follow = await Follow.findOne({
-      followerId: currentUserId,
-      followingId: targetUserId,
-    }).lean();
 
     return res.status(200).json({
       success: true,

@@ -43,5 +43,8 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ provider: 1, providerUserId: 1 }, { unique: true });
+userSchema.index({ phoneNumber: 1 }, { sparse: true });
+userSchema.index({ email: 1 }, { sparse: true });
+userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('User', userSchema);

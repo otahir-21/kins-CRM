@@ -10,5 +10,6 @@ const groupReportSchema = new mongoose.Schema(
 );
 
 groupReportSchema.index({ reporterId: 1, groupId: 1 }, { unique: true });
+groupReportSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('GroupReport', groupReportSchema);

@@ -41,6 +41,7 @@ function toUserResponse(user) {
  * POST /api/v1/auth/login
  * Body: { provider, providerUserId, phoneNumber?, email?, name?, profilePictureUrl? }
  * Find or create user by (provider + providerUserId), update profile if provided, issue JWT.
+ * Add ?timing=1 or header X-Debug-Timing: 1 to get timing report in response.
  */
 async function login(req, res) {
   const { provider, providerUserId, phoneNumber, email, name, profilePictureUrl } = req.body;
@@ -58,8 +59,19 @@ async function login(req, res) {
     return res.status(500).json({ success: false, error: 'Server misconfiguration: JWT_SECRET not set.' });
   }
 
+  const includeTiming = req.query.timing === '1' || (req.get && req.get('x-debug-timing') === '1');
+  const timing = {};
+
   try {
+    const startMs = Date.now();
+    console.time('LOGIN_TOTAL');
+
+    // User lookup (indexed: provider + providerUserId); .lean() for read-only
+    console.time('LOGIN_User.findOne');
     let user = await User.findOne({ provider, providerUserId }).lean();
+    console.timeEnd('LOGIN_User.findOne');
+    timing.userFindOneMs = Date.now() - startMs;
+
     const now = new Date();
     const updates = { updatedAt: now };
 
@@ -83,18 +95,31 @@ async function login(req, res) {
       user = { ...user, ...updates };
     }
 
+    // No bcrypt in this flow (provider-based auth: phone/google/apple)
+    const beforeJwtMs = Date.now();
+    console.time('LOGIN_jwt.sign');
     const token = jwt.sign(
       { userId: user._id.toString(), provider, providerUserId: user.providerUserId },
       secret,
       { expiresIn }
     );
+    console.timeEnd('LOGIN_jwt.sign');
+    timing.jwtSignMs = Date.now() - beforeJwtMs;
 
-    return res.status(200).json({
+    timing.totalMs = Date.now() - startMs;
+    console.timeEnd('LOGIN_TOTAL');
+    console.log('[login] timing', timing);
+
+    const payload = {
       success: true,
       token,
       user: toUserResponse(user),
-    });
+    };
+    if (includeTiming) payload.timing = timing;
+
+    return res.status(200).json(payload);
   } catch (err) {
+    console.timeEnd('LOGIN_TOTAL');
     if (err.code === 11000) {
       return res.status(409).json({ success: false, error: 'User already exists with this provider and id.' });
     }

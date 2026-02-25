@@ -1,54 +1,39 @@
-const mongoose = require('mongoose');
+/**
+ * DB config: query timing (optional) and re-exports from lib/mongodb.
+ * All connection logic lives in lib/mongodb.js (global cache for Vercel).
+ */
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/kins-crm';
+const { connectDB, mongoose } = require('../lib/mongodb');
 
-// Cache connection promise for serverless environments (Vercel)
-let cachedConnection = null;
+// Optional: log Mongo query duration (set MONGODB_QUERY_TIMING=1 to enable)
+const QUERY_TIMING = process.env.MONGODB_QUERY_TIMING === '1';
 
-async function connectMongo() {
-  // Return existing connection if already connected
-  if (mongoose.connection.readyState === 1) {
-    return mongoose.connection;
-  }
-
-  // Return pending connection promise if connecting
-  if (cachedConnection) {
-    return cachedConnection;
-  }
-
-  const isAtlas = MONGODB_URI.includes('mongodb.net');
-  const isLocal = MONGODB_URI.includes('localhost') || MONGODB_URI.includes('127.0.0.1');
-  const isVercel = !!process.env.VERCEL;
-
-  try {
-    // Longer timeout for serverless cold starts
-    const timeoutMs = isVercel ? 30000 : 10000;
-    
-    cachedConnection = mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: timeoutMs,
-      socketTimeoutMS: 45000,
-      // Optimize for serverless (fewer connections, faster startup)
-      maxPoolSize: isVercel ? 1 : 10,
-      minPoolSize: 0,
-    });
-
-    await cachedConnection;
-    
-    console.log('MongoDB connected:', isLocal ? 'localhost' : 'Atlas', isVercel ? '(Vercel)' : '');
-    
-    return mongoose.connection;
-  } catch (err) {
-    cachedConnection = null; // Reset cache on error
-    
-    if (isAtlas) {
-      console.error('MongoDB (Atlas) connection failed:', err.message);
-      console.error('  → Check: .env MONGODB_URI, internet, Atlas IP allowlist (0.0.0.0/0), cluster not paused.');
+if (QUERY_TIMING) {
+  const originalQueryExec = mongoose.Query.prototype.exec;
+  mongoose.Query.prototype.exec = function (cb) {
+    const label = `mongo:${this.model?.modelName || 'Model'}:${this.op ?? 'query'}`;
+    console.time(label);
+    const result = originalQueryExec.apply(this, arguments);
+    if (result && typeof result.then === 'function') {
+      result.then(() => console.timeEnd(label), () => console.timeEnd(label));
     } else {
-      console.error('MongoDB (local) connection failed:', err.message);
-      console.error('  → Start MongoDB: brew services start mongodb-community (Mac) or run mongod.');
+      console.timeEnd(label);
     }
-    throw err;
-  }
+    return result;
+  };
+  const originalAggregateExec = mongoose.Aggregate.prototype.exec;
+  mongoose.Aggregate.prototype.exec = function (cb) {
+    const label = 'mongo:Aggregate:exec';
+    console.time(label);
+    const result = originalAggregateExec.apply(this, arguments);
+    if (result && typeof result.then === 'function') {
+      result.then(() => console.timeEnd(label), () => console.timeEnd(label));
+    } else {
+      console.timeEnd(label);
+    }
+    return result;
+  };
 }
 
-module.exports = { connectMongo, mongoose };
+// Backward compatibility: connectMongo === connectDB
+module.exports = { connectMongo: connectDB, connectDB, mongoose };
