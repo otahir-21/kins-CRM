@@ -9,6 +9,7 @@ function toUserDoc(user) {
   const u = user.toObject ? user.toObject() : user;
   return {
     id: u._id.toString(),
+    providerUserId: u.providerUserId ?? null,
     name: u.name ?? null,
     email: u.email ?? null,
     phoneNumber: u.phoneNumber ?? null,

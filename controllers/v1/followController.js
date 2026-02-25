@@ -31,6 +31,7 @@ function toPublicUser(user) {
   const username = u.username ?? null;
   return {
     id: u._id.toString(),
+    providerUserId: u.providerUserId ?? null,
     name,
     username,
     displayName: getDisplayName(name, username),
@@ -190,7 +191,7 @@ async function getFollowers(req, res) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('followerId', 'name username profilePictureUrl bio followerCount followingCount')
+      .populate('followerId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
       .lean();
 
     const total = await Follow.countDocuments({ followingId: targetId });
@@ -256,7 +257,7 @@ async function getFollowing(req, res) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('followingId', 'name username profilePictureUrl bio followerCount followingCount')
+      .populate('followingId', 'name username profilePictureUrl bio followerCount followingCount providerUserId')
       .lean();
 
     const total = await Follow.countDocuments({ followerId: targetId });
@@ -313,7 +314,7 @@ async function getFollowStatus(req, res) {
     }
 
     const targetUser = await User.findById(targetUserId)
-      .select('name username profilePictureUrl followerCount followingCount')
+      .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
       .lean();
     if (!targetUser) {
       return res.status(404).json({ success: false, error: 'User not found.' });
@@ -379,7 +380,7 @@ async function searchUsers(req, res) {
     };
 
     const users = await User.find(filter)
-      .select('name username profilePictureUrl bio followerCount followingCount')
+      .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
       .limit(limit)
       .lean();
 
@@ -440,7 +441,7 @@ async function getSuggestions(req, res) {
         _id: { $nin: excludeArr },
         interests: { $in: myInterestIds },
       })
-        .select('name username profilePictureUrl bio followerCount followingCount')
+        .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
         .sort({ followerCount: -1 })
         .limit(limit)
         .lean();
@@ -457,7 +458,7 @@ async function getSuggestions(req, res) {
       const popular = await User.find({
         _id: { $nin: excludeArr },
       })
-        .select('name username profilePictureUrl bio followerCount followingCount')
+        .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
         .sort({ followerCount: -1 })
         .limit(need + excludeArr.length)
         .lean();
@@ -514,7 +515,7 @@ async function getNearby(req, res) {
       'location.longitude': { $ne: null },
       'location.isVisible': true,
     })
-      .select('name username profilePictureUrl location')
+      .select('name username profilePictureUrl location providerUserId')
       .lean();
 
     const followList = await Follow.find({ followerId: currentUserId }).select('followingId').lean();
@@ -563,7 +564,7 @@ async function getPublicProfile(req, res) {
     }
 
     const targetUser = await User.findById(targetUserId)
-      .select('name username profilePictureUrl bio followerCount followingCount')
+      .select('name username profilePictureUrl bio followerCount followingCount providerUserId')
       .lean();
     if (!targetUser) {
       return res.status(404).json({ success: false, error: 'User not found.' });

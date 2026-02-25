@@ -8,6 +8,7 @@ function toGroupMember(memberDoc, adminIds) {
   const id = memberDoc._id.toString();
   return {
     id,
+    providerUserId: memberDoc.providerUserId ?? null,
     name: memberDoc.name ?? null,
     username: memberDoc.username ?? null,
     profilePictureUrl: memberDoc.profilePictureUrl ?? null,
@@ -103,7 +104,7 @@ async function getGroupById(req, res) {
     }
 
     const group = await Group.findById(groupId)
-      .populate('members', 'name username profilePictureUrl')
+      .populate('members', 'name username profilePictureUrl providerUserId')
       .lean();
 
     if (!group) {

@@ -93,7 +93,7 @@ async function getFirebaseToken(req, res) {
 
 /**
  * PUT /me/about - update profile fields
- * Body: { name?, username?, bio?, status?, gender?, dateOfBirth?, profilePictureUrl?, documentUrl?, latitude?, longitude?, locationIsVisible? }
+ * Body: { name?, username?, bio?, status?, gender?, dateOfBirth?, profilePictureUrl?, documentUrl?, email?, phoneNumber?, country?, city?, latitude?, longitude?, locationIsVisible? }
  */
 async function updateMeAbout(req, res) {
   const filtered = {};
