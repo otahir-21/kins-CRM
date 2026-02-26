@@ -38,7 +38,8 @@ const postSchema = new mongoose.Schema(
     commentsCount: { type: Number, default: 0, min: 0 },
     sharesCount: { type: Number, default: 0, min: 0 },
     viewsCount: { type: Number, default: 0, min: 0 },
-    
+    reportCount: { type: Number, default: 0, min: 0, index: true },
+
     // Soft delete
     isActive: { type: Boolean, default: true, index: true },
   },
@@ -49,6 +50,7 @@ const postSchema = new mongoose.Schema(
 postSchema.index({ interests: 1, createdAt: -1 });
 postSchema.index({ userId: 1, createdAt: -1 });
 postSchema.index({ isActive: 1, createdAt: -1 });
+postSchema.index({ reportCount: -1, createdAt: -1 });
 postSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Post', postSchema);

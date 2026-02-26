@@ -1,4 +1,5 @@
 const Post = require('../../models/Post');
+const PostReport = require('../../models/PostReport');
 const BunnyService = require('../../services/BunnyService');
 const FeedService = require('../../services/FeedService');
 const mongoose = require('mongoose');
@@ -235,4 +236,41 @@ async function getMyPosts(req, res) {
   }
 }
 
-module.exports = { createPost, getPost, deletePost, getMyPosts };
+/**
+ * Report a post. One report per user per post (idempotent).
+ * POST /api/v1/posts/:postId/report
+ * Body: { reason?: string }
+ */
+async function reportPost(req, res) {
+  try {
+    const { postId } = req.params;
+    const userId = req.userId;
+    const { reason } = req.body || {};
+
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ success: false, error: 'Invalid post ID.' });
+    }
+
+    const post = await Post.findById(postId).select('_id isActive').lean();
+    if (!post || !post.isActive) {
+      return res.status(404).json({ success: false, error: 'Post not found.' });
+    }
+
+    const reporterId = new mongoose.Types.ObjectId(userId);
+    const postIdObj = new mongoose.Types.ObjectId(postId);
+    const existing = await PostReport.findOne({ reporterId, postId: postIdObj }).lean();
+    if (existing) {
+      return res.status(200).json({ success: true, message: 'You have already reported this post.', reported: true });
+    }
+
+    await PostReport.create({ reporterId, postId: postIdObj, reason: reason ? String(reason).trim().slice(0, 500) : null });
+    await Post.findByIdAndUpdate(postId, { $inc: { reportCount: 1 } });
+
+    return res.status(200).json({ success: true, message: 'Post reported.', reported: true });
+  } catch (err) {
+    console.error('POST /posts/:postId/report error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to report post.' });
+  }
+}
+
+module.exports = { createPost, getPost, deletePost, getMyPosts, reportPost };

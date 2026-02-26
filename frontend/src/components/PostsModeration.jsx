@@ -170,7 +170,7 @@ const PostsModeration = () => {
                       />
                     </a>
                   )}
-                  {filter === 'active' && (
+                  {(filter === 'active' || filter === 'reported') && (
                     <button
                       onClick={() => handleDelete(post.id)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

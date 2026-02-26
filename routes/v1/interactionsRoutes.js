@@ -25,6 +25,7 @@ const {
   removeVote,
 } = require('../../controllers/v1/pollsController');
 const { savePost, unsavePost, getSaveStatus } = require('../../controllers/v1/savedPostsController');
+const { reportPost } = require('../../controllers/v1/postsController');
 
 const router = express.Router();
 
@@ -59,6 +60,9 @@ router.get('/posts/:postId/shares', getPostShares);
 
 // ===== VIEWS =====
 router.post('/posts/:postId/view', incrementView);
+
+// ===== REPORT =====
+router.post('/posts/:postId/report', reportPost);
 
 // ===== SAVE (bookmark) =====
 router.get('/posts/:postId/save/status', getSaveStatus);
