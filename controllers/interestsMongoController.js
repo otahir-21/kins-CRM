@@ -257,6 +257,27 @@ async function remove(req, res) {
   return res.status(200).json({ success: true, message: 'Tag deactivated.', data: toInterestDoc(interest) });
 }
 
+/**
+ * DELETE /interests/uncategorized - deactivate all tags that have no category.
+ * Keeps them in DB (soft-delete) so user.interests references don't break.
+ */
+async function deactivateUncategorized(req, res) {
+  try {
+    const result = await Interest.updateMany(
+      { $or: [{ categoryId: null }, { categoryId: { $exists: false } }], isActive: true },
+      { $set: { isActive: false } }
+    );
+    return res.status(200).json({
+      success: true,
+      message: `Deactivated ${result.modifiedCount} uncategorized tag(s).`,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (err) {
+    console.error('DELETE /interests/uncategorized error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to deactivate uncategorized tags.' });
+  }
+}
+
 module.exports = {
   list,
   listCategories,
@@ -266,4 +287,5 @@ module.exports = {
   create,
   update,
   remove,
+  deactivateUncategorized,
 };

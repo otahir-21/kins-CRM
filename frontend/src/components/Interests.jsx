@@ -279,45 +279,7 @@ const Interests = () => {
           );
         })}
 
-        {uncategorized.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 bg-amber-50 border-b border-amber-200">
-              <div className="flex items-center gap-3">
-                <Tag className="w-5 h-5 text-amber-600" />
-                <h2 className="text-lg font-semibold text-gray-800">Uncategorized</h2>
-                <span className="text-sm text-gray-500">({uncategorized.length} tags)</span>
-              </div>
-              <button onClick={() => openAddTag(null)} className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg" title="Add uncategorized tag">
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-4 flex flex-wrap gap-2">
-              {filterTags(uncategorized).map((tag) => (
-                <div
-                  key={tag.id}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
-                    tag.isActive ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200 opacity-70'
-                  }`}
-                >
-                  <Tag className={`w-4 h-4 ${tag.isActive ? 'text-amber-600' : 'text-gray-400'}`} />
-                  <span className="font-medium text-gray-800">{tag.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${tag.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
-                    {tag.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                  <button onClick={() => handleToggleTagActive(tag)} className="p-1 hover:bg-white/50 rounded">{tag.isActive ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}</button>
-                  <button onClick={() => { setEditingTag(tag); setFormTag({ name: tag.name, categoryId: '' }); setShowEditTag(true); }} className="p-1 text-primary-600 hover:bg-primary-100 rounded">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDeleteTag(tag.id)} className="p-1 text-red-600 hover:bg-red-100 rounded">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {categories.length === 0 && uncategorized.length === 0 && (
+        {categories.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm p-12 border border-gray-200 text-center">
             <FolderOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">No categories or tags yet</p>
@@ -327,7 +289,7 @@ const Interests = () => {
                 Add Category
               </button>
               <button onClick={() => openAddTag()} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
-                Add Tag (uncategorized)
+                Add Tag
               </button>
             </div>
           </div>

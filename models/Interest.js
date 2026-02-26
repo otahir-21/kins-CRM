@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const interestSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    nameNormalized: { type: String, lowercase: true, trim: true, index: true },
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'InterestCategory', default: null, index: true },
+    nameNormalized: { type: String, lowercase: true, trim: true },
+    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'InterestCategory', default: null },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true }

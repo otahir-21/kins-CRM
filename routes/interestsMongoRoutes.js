@@ -8,6 +8,7 @@ const {
   create,
   update,
   remove,
+  deactivateUncategorized,
 } = require('../controllers/interestsMongoController');
 
 const router = express.Router();
@@ -17,6 +18,9 @@ router.get('/categories', listCategories);
 router.post('/categories', createCategory);
 router.put('/categories/:id', updateCategory);
 router.delete('/categories/:id', removeCategory);
+
+// Deactivate all uncategorized tags (soft-delete)
+router.delete('/uncategorized', deactivateUncategorized);
 
 // List: grouped (categories + tags) or flat tags. Create tag.
 router.get('/', list);
