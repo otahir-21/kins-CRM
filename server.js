@@ -734,7 +734,7 @@ app.get('/api/upload/image', (req, res) => {
   });
 });
 
-// Upload image to Bunny CDN; returns public URL for use in onboarding (or elsewhere)
+// Upload image to Bunny CDN; returns public URL for use in onboarding or profile picture
 app.post('/api/upload/image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file || !req.file.buffer) {
@@ -748,7 +748,9 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
     res.json({ success: true, url });
   } catch (error) {
     console.error('Error in POST /api/upload/image:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const isConfigMissing = error.message && (error.message.includes('Bunny CDN config missing') || error.message.includes('not configured'));
+    const status = isConfigMissing ? 503 : 500;
+    res.status(status).json({ success: false, error: error.message || 'Image upload failed.' });
   }
 });
 
@@ -1029,10 +1031,18 @@ app.get('/api/users/:userId/survey-responses/:surveyId', async (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    success: false, 
+  const isMulter = err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_UNEXPECTED_FILE' || err.name === 'MulterError';
+  const isUploadConfig = err.message && (err.message.includes('Bunny CDN config missing') || err.message.includes('not configured'));
+  if (isMulter) {
+    return res.status(400).json({ success: false, error: err.message || 'Invalid file. Use field name: image, max 5MB.' });
+  }
+  if (isUploadConfig) {
+    return res.status(503).json({ success: false, error: err.message || 'Upload service not configured.' });
+  }
+  res.status(500).json({
+    success: false,
     error: 'Internal server error',
-    message: err.message 
+    message: err.message
   });
 });
 

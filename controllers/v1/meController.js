@@ -4,6 +4,7 @@ const Interest = require('../../models/Interest');
 const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 const { createCustomToken, getMissingFirebaseEnv, getLastFirebaseError } = require('../../services/firebaseAdmin');
+const BunnyService = require('../../services/BunnyService');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
 
@@ -88,6 +89,36 @@ async function getFirebaseToken(req, res) {
   } catch (err) {
     console.error('GET /me/firebase-token error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to create Firebase token.' });
+  }
+}
+
+/**
+ * POST /me/profile-picture - upload profile picture (multipart field "media", same as post upload).
+ * Send one image in the "media" field. Returns updated user.
+ */
+async function uploadProfilePicture(req, res) {
+  try {
+    const file = req.files && req.files[0];
+    if (!file || !file.buffer) {
+      return res.status(400).json({ success: false, error: 'No image provided. Use multipart field name: media (same as post upload).' });
+    }
+    if (!BunnyService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Profile picture upload is not configured. Set BUNNY_STORAGE_ZONE, BUNNY_ACCESS_KEY, BUNNY_CDN_URL in environment.',
+      });
+    }
+    const fileName = file.originalname || `profile_${Date.now()}.jpg`;
+    const { cdnUrl } = await BunnyService.upload(file.buffer, fileName, 'profile');
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { profilePictureUrl: cdnUrl, updatedAt: new Date() },
+      { new: true }
+    ).lean();
+    return res.status(200).json({ success: true, user: toUserResponse(user), profilePictureUrl: cdnUrl });
+  } catch (err) {
+    console.error('POST /me/profile-picture error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to upload profile picture.' });
   }
 }
 
@@ -215,4 +246,4 @@ async function deleteMe(req, res) {
   }
 }
 
-module.exports = { getMe, updateMeAbout, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe };
+module.exports = { getMe, updateMeAbout, uploadProfilePicture, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe };
