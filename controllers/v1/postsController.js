@@ -188,10 +188,19 @@ async function deletePost(req, res) {
 /**
  * Get current user's posts (paginated).
  * GET /api/v1/posts/my
+ * Returns only posts where author (userId) equals the authenticated user from JWT.
  */
 async function getMyPosts(req, res) {
   try {
-    const userId = req.userId;
+    const rawUserId = req.userId;
+    if (!rawUserId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated.' });
+    }
+    const userId = mongoose.Types.ObjectId.isValid(rawUserId) ? new mongoose.Types.ObjectId(String(rawUserId)) : null;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Invalid user id.' });
+    }
+
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
