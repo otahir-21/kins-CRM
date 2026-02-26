@@ -32,7 +32,10 @@ const postSchema = new mongoose.Schema(
     
     // Interests (for targeting feed)
     interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Interest', required: true }],
-    
+
+    // Tagged/mentioned users (@mentions)
+    taggedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+
     // Engagement (cached counts for performance)
     likesCount: { type: Number, default: 0, min: 0 },
     commentsCount: { type: Number, default: 0, min: 0 },

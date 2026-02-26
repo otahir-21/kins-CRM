@@ -56,6 +56,14 @@ async function getFeed(req, res) {
       },
       {
         $lookup: {
+          from: 'users',
+          localField: 'taggedUserIds',
+          foreignField: '_id',
+          as: 'taggedUsersDoc',
+        },
+      },
+      {
+        $lookup: {
           from: 'likes',
           let: { pid: '$_id' },
           pipeline: [
@@ -176,6 +184,18 @@ async function getFeed(req, res) {
               in: { _id: '$$i._id', name: '$$i.name' },
             },
           },
+          taggedUsers: {
+            $map: {
+              input: { $ifNull: ['$taggedUsersDoc', []] },
+              as: 'u',
+              in: {
+                id: { $toString: '$$u._id' },
+                name: '$$u.name',
+                username: '$$u.username',
+                profilePictureUrl: '$$u.profilePictureUrl',
+              },
+            },
+          },
         },
       },
     ];
@@ -200,6 +220,7 @@ async function getFeed(req, res) {
           userVote: post.userVote ?? null,
           pollResults: post.pollResults ?? null,
           interests: post.interests,
+          taggedUsers: post.taggedUsers ?? [],
           type: post.type,
           createdAt: post.createdAt,
           feedScore: entry.score,

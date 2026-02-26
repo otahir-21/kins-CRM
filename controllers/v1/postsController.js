@@ -1,18 +1,31 @@
 const Post = require('../../models/Post');
 const PostReport = require('../../models/PostReport');
+const User = require('../../models/User');
 const BunnyService = require('../../services/BunnyService');
 const FeedService = require('../../services/FeedService');
 const mongoose = require('mongoose');
 
+const MAX_TAGGED_USERS = 30;
+
+function toTaggedUser(doc) {
+  if (!doc || !doc._id) return null;
+  return {
+    id: doc._id.toString(),
+    name: doc.name ?? null,
+    username: doc.username ?? null,
+    profilePictureUrl: doc.profilePictureUrl ?? null,
+  };
+}
+
 /**
  * Create a new post (text, image, video, or poll).
  * POST /api/v1/posts
- * Body: { type, content?, media?: [{ buffer, fileName, type }], poll?, interestIds }
- * Note: media files should be sent as multipart/form-data and processed by multer.
+ * Body: { type, content?, media?, poll?, interestIds, taggedUserIds? }
+ * Note: media files sent as multipart/form-data; interestIds/taggedUserIds can be JSON strings.
  */
 async function createPost(req, res) {
   try {
-    const { type, content, poll, interestIds } = req.body;
+    const { type, content, poll, interestIds, taggedUserIds: rawTagged } = req.body;
     const userId = req.userId;
 
     // Validate type
@@ -30,12 +43,34 @@ async function createPost(req, res) {
       return res.status(400).json({ success: false, error: 'No valid interests provided.' });
     }
 
+    // Parse and validate taggedUserIds (optional; can be JSON string from form-data)
+    let taggedUserIds = [];
+    if (rawTagged !== undefined && rawTagged !== null && rawTagged !== '') {
+      let parsed = [];
+      if (Array.isArray(rawTagged)) parsed = rawTagged;
+      else if (typeof rawTagged === 'string') {
+        try {
+          const v = JSON.parse(rawTagged);
+          parsed = Array.isArray(v) ? v : [];
+        } catch {
+          parsed = [];
+        }
+      }
+      const ids = [...new Set(parsed.filter((id) => id && mongoose.Types.ObjectId.isValid(id)).map((id) => id.toString()))].slice(0, MAX_TAGGED_USERS);
+      if (ids.length > 0) {
+        const existing = await User.find({ _id: { $in: ids } }).select('_id').lean();
+        const existingIds = new Set(existing.map((u) => u._id.toString()));
+        taggedUserIds = ids.filter((id) => existingIds.has(id)).map((id) => new mongoose.Types.ObjectId(id));
+      }
+    }
+
     // Prepare post data
     const postData = {
       userId,
       type,
       content: content || null,
       interests: validInterestIds,
+      taggedUserIds,
       media: [],
       poll: null,
     };
@@ -99,6 +134,13 @@ async function createPost(req, res) {
       }
     });
 
+    const created = post.toObject ? post.toObject() : post;
+    let taggedUsers = [];
+    if (created.taggedUserIds && created.taggedUserIds.length > 0) {
+      const users = await User.find({ _id: { $in: created.taggedUserIds } }).select('name username profilePictureUrl').lean();
+      taggedUsers = users.map(toTaggedUser).filter(Boolean);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Post created successfully.',
@@ -110,6 +152,8 @@ async function createPost(req, res) {
         media: post.media,
         poll: post.poll,
         interests: post.interests,
+        taggedUserIds: (post.taggedUserIds || []).map((id) => (id && id.toString ? id.toString() : id)),
+        taggedUsers,
         likesCount: post.likesCount,
         commentsCount: post.commentsCount,
         sharesCount: post.sharesCount,
@@ -138,13 +182,23 @@ async function getPost(req, res) {
     const post = await Post.findById(id)
       .populate('userId', 'name username profilePictureUrl')
       .populate('interests', 'name')
+      .populate('taggedUserIds', 'name username profilePictureUrl')
       .lean();
 
     if (!post || !post.isActive) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
 
-    return res.status(200).json({ success: true, post });
+    const taggedUsers = (post.taggedUserIds || []).map(toTaggedUser).filter(Boolean);
+    const { taggedUserIds: ids, ...rest } = post;
+    return res.status(200).json({
+      success: true,
+      post: {
+        ...rest,
+        taggedUserIds: (ids || []).map((u) => (u && u._id ? u._id.toString() : u.toString())),
+        taggedUsers,
+      },
+    });
   } catch (err) {
     console.error('GET /posts/:id error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to fetch post.' });
