@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema(
     interests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Interest', default: [] }],
     interestsUpdatedAt: { type: Date, default: null },
 
+    // saved posts (bookmarks)
+    savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: [] }],
+
     // counts (future-safe)
     followerCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },

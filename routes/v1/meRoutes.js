@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
 const { getMe, updateMeAbout, uploadProfilePicture, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe } = require('../../controllers/v1/meController');
+const { getMySavedPosts } = require('../../controllers/v1/savedPostsController');
 
 const router = express.Router();
 
@@ -36,5 +37,6 @@ router.post('/profile-picture', (req, res, next) => {
 router.delete('/', deleteMe);
 router.get('/interests', getMyInterests);
 router.post('/interests', setMyInterests);
+router.get('/saved-posts', getMySavedPosts);
 
 module.exports = router;

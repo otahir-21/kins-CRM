@@ -32,6 +32,7 @@ function toUserResponse(user) {
     followingCount: u.followingCount ?? 0,
     interests: (u.interests || []).map((i) => (i && i._id ? i._id.toString() : i.toString())),
     interestsUpdatedAt: u.interestsUpdatedAt ?? null,
+    savedPosts: (u.savedPosts || []).map((id) => (id && id.toString ? id.toString() : id)),
     latitude: loc?.latitude ?? null,
     longitude: loc?.longitude ?? null,
     locationIsVisible: loc?.isVisible ?? false,
