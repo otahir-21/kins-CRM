@@ -1,16 +1,34 @@
 const express = require('express');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { list, create, update, remove } = require('../../controllers/interestsMongoController');
+const {
+  list,
+  listCategories,
+  createCategory,
+  updateCategory,
+  removeCategory,
+  create,
+  update,
+  remove,
+} = require('../../controllers/interestsMongoController');
 
 const router = express.Router();
 
-// GET /interests - return only isActive === true, sorted by name (public)
+// Categories (before /:id)
+router.get('/categories', (req, res, next) => {
+  req.query.active = 'true';
+  return listCategories(req, res, next);
+});
+router.post('/categories', verifyJwt, createCategory);
+router.put('/categories/:id', verifyJwt, updateCategory);
+router.delete('/categories/:id', verifyJwt, removeCategory);
+
+// GET /interests - grouped categories + tags, active only (public for app)
 router.get('/', (req, res, next) => {
-  req.query.active = 'true'; // force active-only for v1
+  req.query.active = 'true';
   return list(req, res, next);
 });
 
-// Mutations require JWT
+// Tag mutations require JWT
 router.post('/', verifyJwt, create);
 router.put('/:id', verifyJwt, update);
 router.delete('/:id', verifyJwt, remove);

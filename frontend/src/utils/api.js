@@ -47,27 +47,30 @@ export const apiService = {
     return api.get('/api/statistics');
   },
   
-  // Interests
+  // Interests (tags) and Categories
+  getAllInterests: (isActive = null, grouped = true) => {
+    const params = new URLSearchParams();
+    if (isActive !== null) params.set('active', isActive);
+    if (!grouped) params.set('grouped', 'false');
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return api.get(`/api/interests${q}`);
+  },
   createInterest: (data) => {
     return api.post('/api/interests', data);
   },
-  
-  getAllInterests: (isActive = null) => {
-    const params = isActive !== null ? `?isActive=${isActive}` : '';
-    return api.get(`/api/interests${params}`);
-  },
-  
   getInterestById: (interestId) => {
     return api.get(`/api/interests/${interestId}`);
   },
-  
   updateInterest: (interestId, data) => {
     return api.put(`/api/interests/${interestId}`, data);
   },
-  
   deleteInterest: (interestId, hard = false) => {
     return api.delete(`/api/interests/${interestId}${hard ? '?hard=true' : ''}`);
   },
+  getCategories: () => api.get('/api/interests/categories'),
+  createCategory: (data) => api.post('/api/interests/categories', data),
+  updateCategory: (categoryId, data) => api.put(`/api/interests/categories/${categoryId}`, data),
+  deleteCategory: (categoryId) => api.delete(`/api/interests/categories/${categoryId}`),
   
   // User Interests
   getUserInterests: (userId, details = false) => {
