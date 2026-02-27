@@ -116,6 +116,16 @@ export const apiService = {
   markAllNotificationsAsRead: (userId) => {
     return api.put(`/api/users/${userId}/notifications/read-all`);
   },
+
+  // Admin: warn user (in-app + push notification)
+  warnUser: (userId, data) => {
+    return api.post(`/api/users/${userId}/warn`, data);
+  },
+
+  // Admin: soft-delete user (cannot log in again)
+  deleteUser: (userId) => {
+    return api.delete(`/api/users/${userId}`);
+  },
   
   saveFCMToken: (userId, fcmToken) => {
     return api.post(`/api/users/${userId}/fcm-token`, { fcmToken });

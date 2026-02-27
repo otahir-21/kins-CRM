@@ -3,6 +3,7 @@ const User = require('../../models/User');
 const Interest = require('../../models/Interest');
 const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
+const { getUserNotifications, getNotificationStats, markNotificationAsRead, markAllNotificationsAsRead } = require('../../notifications-helpers');
 const { createCustomToken, getMissingFirebaseEnv, getLastFirebaseError } = require('../../services/firebaseAdmin');
 const BunnyService = require('../../services/BunnyService');
 
@@ -247,4 +248,76 @@ async function deleteMe(req, res) {
   }
 }
 
-module.exports = { getMe, updateMeAbout, uploadProfilePicture, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe };
+/**
+ * GET /me/notifications - list current user's in-app notifications (e.g. warnings from admin).
+ */
+async function getMyNotifications(req, res) {
+  try {
+    const userId = req.userId;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const unreadOnly = req.query.unreadOnly === 'true';
+    const list = await getUserNotifications(userId, { limit, unreadOnly });
+    return res.status(200).json({ success: true, notifications: list, data: list });
+  } catch (err) {
+    console.error('GET /me/notifications error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch notifications.' });
+  }
+}
+
+/**
+ * GET /me/notifications/stats - total and unread count.
+ */
+async function getMyNotificationStats(req, res) {
+  try {
+    const stats = await getNotificationStats(req.userId);
+    return res.status(200).json({ success: true, ...stats });
+  } catch (err) {
+    console.error('GET /me/notifications/stats error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch notification stats.' });
+  }
+}
+
+/**
+ * PUT /me/notifications/:notificationId/read - mark one as read.
+ */
+async function markMyNotificationRead(req, res) {
+  try {
+    const { notificationId } = req.params;
+    if (!isValidObjectId(notificationId)) {
+      return res.status(400).json({ success: false, error: 'Invalid notification ID.' });
+    }
+    await markNotificationAsRead(req.userId, notificationId);
+    return res.status(200).json({ success: true, message: 'Marked as read.' });
+  } catch (err) {
+    console.error('PUT /me/notifications/:id/read error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to mark as read.' });
+  }
+}
+
+/**
+ * PUT /me/notifications/read-all - mark all as read.
+ */
+async function markMyNotificationsAllRead(req, res) {
+  try {
+    const count = await markAllNotificationsAsRead(req.userId);
+    return res.status(200).json({ success: true, message: 'All marked as read.', count });
+  } catch (err) {
+    console.error('PUT /me/notifications/read-all error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to mark all as read.' });
+  }
+}
+
+module.exports = {
+  getMe,
+  updateMeAbout,
+  uploadProfilePicture,
+  setMyInterests,
+  getMyInterests,
+  getFirebaseToken,
+  saveFcmToken,
+  deleteMe,
+  getMyNotifications,
+  getMyNotificationStats,
+  markMyNotificationRead,
+  markMyNotificationsAllRead,
+};

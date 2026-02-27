@@ -68,7 +68,11 @@ async function login(req, res) {
 
     // User lookup (indexed: provider + providerUserId); .lean() for read-only
     console.time('LOGIN_User.findOne');
-    let user = await User.findOne({ provider, providerUserId }).lean();
+    let user = await User.findOne({
+      provider,
+      providerUserId,
+      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+    }).lean();
     console.timeEnd('LOGIN_User.findOne');
     timing.userFindOneMs = Date.now() - startMs;
 

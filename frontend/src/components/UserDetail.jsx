@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Calendar, FileText, Download, Edit, Tag, Bell, Send } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Calendar, FileText, Download, Edit, Tag, Bell, Send, AlertTriangle, Trash2 } from 'lucide-react';
 import { apiService } from '../utils/api';
 import { formatFirestoreDateTime } from '../utils/dateHelpers';
 
@@ -20,6 +20,11 @@ const UserDetail = () => {
   const [sendingNotification, setSendingNotification] = useState(false);
   const [fcmToken, setFcmToken] = useState('');
   const [showFCMTokenModal, setShowFCMTokenModal] = useState(false);
+  const [showWarnModal, setShowWarnModal] = useState(false);
+  const [warnMessage, setWarnMessage] = useState('');
+  const [warnTitle, setWarnTitle] = useState('Warning from KINS');
+  const [sendingWarn, setSendingWarn] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   useEffect(() => {
     fetchUserDetails();
@@ -169,6 +174,72 @@ const UserDetail = () => {
         </div>
       </div>
 
+      {/* Admin: Warn & Delete */}
+      {user && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <h2 className="text-lg font-semibold text-amber-900 mb-2 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Admin actions
+          </h2>
+          <p className="text-sm text-amber-800 mb-3">
+            Send a warning (in-app + push) and/or deactivate the user. Deactivated users cannot log in.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => { setWarnMessage(''); setWarnTitle('Warning from KINS'); setShowWarnModal(true); }}
+              className="flex items-center px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              Send warning
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm('Deactivate this user? They will no longer be able to log in. Data is retained.')) return;
+                setDeletingUser(true);
+                try {
+                  await apiService.deleteUser(user.id);
+                  alert('User deactivated.');
+                  fetchUserDetails();
+                } catch (e) {
+                  alert(e.response?.data?.error || 'Failed to deactivate user');
+                } finally {
+                  setDeletingUser(false);
+                }
+              }}
+              disabled={user.deletedAt || deletingUser}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {user.deletedAt ? 'Deactivated' : deletingUser ? 'Deactivating...' : 'Delete user'}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm('Send a warning and then deactivate this user?')) return;
+                setSendingWarn(true);
+                try {
+                  await apiService.warnUser(user.id, { message: 'Your account has been deactivated due to a policy violation.', title: 'Account deactivated' });
+                  await apiService.deleteUser(user.id);
+                  alert('Warning sent and user deactivated.');
+                  fetchUserDetails();
+                } catch (e) {
+                  alert(e.response?.data?.error || 'Failed to warn or deactivate');
+                } finally {
+                  setSendingWarn(false);
+                }
+              }}
+              disabled={user.deletedAt || sendingWarn}
+              className="flex items-center px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors disabled:opacity-50"
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Warn & delete
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info Card */}
         <div className="lg:col-span-2 space-y-6">
@@ -228,8 +299,8 @@ const UserDetail = () => {
                 <div className="w-5 h-5 mr-3"></div>
                 <div>
                   <p className="text-sm text-gray-500">Account Status</p>
-                  <span className="px-3 py-1 inline-flex text-sm font-semibold rounded-full bg-green-100 text-green-800">
-                    Active
+                  <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${user.deletedAt ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                    {user.deletedAt ? 'Deactivated' : 'Active'}
                   </span>
                 </div>
               </div>
@@ -512,6 +583,65 @@ const UserDetail = () => {
                   }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Send Warning Modal (Admin) */}
+      {showWarnModal && user && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Send warning</h2>
+            <p className="text-sm text-gray-600 mb-4">The user will see this in-app and get a push notification if they have notifications enabled.</p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSendingWarn(true);
+                try {
+                  await apiService.warnUser(user.id, { message: warnMessage.trim() || 'You have received a warning from the KINS team.', title: warnTitle.trim() || 'Warning from KINS' });
+                  alert('Warning sent.');
+                  setShowWarnModal(false);
+                  setWarnMessage('');
+                  setWarnTitle('Warning from KINS');
+                } catch (err) {
+                  alert(err.response?.data?.error || 'Failed to send warning');
+                } finally {
+                  setSendingWarn(false);
+                }
+              }}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+                  <input
+                    type="text"
+                    value={warnTitle}
+                    onChange={(e) => setWarnTitle(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                    placeholder="Warning from KINS"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
+                  <textarea
+                    value={warnMessage}
+                    onChange={(e) => setWarnMessage(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                    placeholder="e.g. Please review our community guidelines..."
+                    rows={4}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button type="submit" disabled={sendingWarn} className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">
+                  {sendingWarn ? 'Sending...' : 'Send warning'}
+                </button>
+                <button type="button" onClick={() => { setShowWarnModal(false); setWarnMessage(''); setWarnTitle('Warning from KINS'); }} className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
                   Cancel
                 </button>
               </div>

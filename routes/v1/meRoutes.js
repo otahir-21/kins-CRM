@@ -1,7 +1,20 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyJwt } = require('../../middleware/verifyJwt');
-const { getMe, updateMeAbout, uploadProfilePicture, setMyInterests, getMyInterests, getFirebaseToken, saveFcmToken, deleteMe } = require('../../controllers/v1/meController');
+const {
+  getMe,
+  updateMeAbout,
+  uploadProfilePicture,
+  setMyInterests,
+  getMyInterests,
+  getFirebaseToken,
+  saveFcmToken,
+  deleteMe,
+  getMyNotifications,
+  getMyNotificationStats,
+  markMyNotificationRead,
+  markMyNotificationsAllRead,
+} = require('../../controllers/v1/meController');
 const { getMySavedPosts } = require('../../controllers/v1/savedPostsController');
 
 const router = express.Router();
@@ -38,5 +51,9 @@ router.delete('/', deleteMe);
 router.get('/interests', getMyInterests);
 router.post('/interests', setMyInterests);
 router.get('/saved-posts', getMySavedPosts);
+router.get('/notifications/stats', getMyNotificationStats);
+router.get('/notifications', getMyNotifications);
+router.put('/notifications/read-all', markMyNotificationsAllRead);
+router.put('/notifications/:notificationId/read', markMyNotificationRead);
 
 module.exports = router;

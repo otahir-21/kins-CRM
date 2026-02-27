@@ -16,6 +16,7 @@ const {
   getUsersByGender,
   getUsersWithDocuments,
   updateUser,
+  softDeleteUser,
   getUserStatistics
 } = require('./data-helpers');
 
@@ -586,6 +587,55 @@ app.get('/api/users/:userId/fcm-token', async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+});
+
+// ==================== ADMIN: WARN & DELETE USER ====================
+
+// Admin: send warning to user (in-app notification + push; email not implemented, see docs)
+app.post('/api/users/:userId/warn', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { message, title } = req.body || {};
+    const user = await getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+    const result = await sendNotification(userId, {
+      type: 'warning',
+      title: title || 'Warning from KINS',
+      body: message || 'You have received a warning from the KINS team. Please review our community guidelines.',
+      senderId: 'admin',
+      senderName: 'KINS Admin',
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Warning sent. User will see it in-app and receive a push if they have notifications enabled.',
+      notificationId: result.notificationId,
+    });
+  } catch (error) {
+    console.error('Error in POST /api/users/:userId/warn:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Admin: soft-delete user (user cannot log in; data retained)
+app.delete('/api/users/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+    const updated = await softDeleteUser(userId);
+    res.status(200).json({
+      success: true,
+      message: 'User has been deactivated. They can no longer log in.',
+      data: updated,
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/users/:userId:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

@@ -41,6 +41,9 @@ const userSchema = new mongoose.Schema(
       isVisible: { type: Boolean, default: false },
       updatedAt: { type: Date, default: null },
     },
+
+    // admin soft-delete (deleted users cannot log in)
+    deletedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }
 );

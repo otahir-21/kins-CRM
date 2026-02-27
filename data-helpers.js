@@ -18,6 +18,7 @@ function toUserDoc(user) {
     interests: (u.interests || []).map((i) => (i && i.toString ? i.toString() : String(i))),
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
+    deletedAt: u.deletedAt ?? null,
   };
 }
 
@@ -133,6 +134,17 @@ async function updateUser(userId, updateData) {
   return user ? toUserDoc(user) : null;
 }
 
+/** Admin: soft-delete user (sets deletedAt so user cannot log in). */
+async function softDeleteUser(userId) {
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) return null;
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: { deletedAt: new Date(), updatedAt: new Date() } },
+    { new: true }
+  ).lean();
+  return user ? toUserDoc(user) : null;
+}
+
 async function getUserStatistics() {
   const users = await User.find({}).lean();
   const list = users.map(toUserDoc);
@@ -199,6 +211,7 @@ module.exports = {
   getUsersByGender,
   getUsersWithDocuments,
   updateUser,
+  softDeleteUser,
   getUserStatistics,
   getUserInterests,
   addUserInterest,
