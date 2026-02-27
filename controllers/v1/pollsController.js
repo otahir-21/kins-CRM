@@ -38,12 +38,31 @@ async function voteOnPoll(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid option index.' });
     }
 
-    // Check if user already voted
+    // Check if user already voted — return full poll results so app can show server-side state
     const userIdString = userId.toString();
     const hasVoted = post.poll.votedUsers.some((id) => id.toString() === userIdString);
 
     if (hasVoted) {
-      return res.status(400).json({ success: false, error: 'You have already voted on this poll.' });
+      const pv = await PollVote.findOne({ userId, postId }).select('optionIndex').lean();
+      const userVotedOption = pv != null && pv.optionIndex >= 0 ? pv.optionIndex : 0;
+      const pollPayload = {
+        question: post.poll.question,
+        options: post.poll.options.map((opt, idx) => ({
+          index: idx,
+          text: opt.text,
+          votes: opt.votes,
+          percentage: post.poll.totalVotes > 0 ? ((opt.votes / post.poll.totalVotes) * 100).toFixed(1) : 0,
+        })),
+        totalVotes: post.poll.totalVotes,
+        userVoted: true,
+        userVotedOption,
+      };
+      return res.status(200).json({
+        success: false,
+        alreadyVoted: true,
+        userVote: userVotedOption,
+        poll: pollPayload,
+      });
     }
 
     // Add vote
