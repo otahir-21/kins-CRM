@@ -184,6 +184,13 @@ async function getFeed(req, res) {
               in: { _id: '$$i._id', name: '$$i.name' },
             },
           },
+          taggedUserIds: {
+            $map: {
+              input: { $ifNull: ['$taggedUserIds', []] },
+              as: 'id',
+              in: { $toString: '$$id' },
+            },
+          },
           taggedUsers: {
             $map: {
               input: { $ifNull: ['$taggedUsersDoc', []] },
@@ -220,6 +227,7 @@ async function getFeed(req, res) {
           userVote: post.userVote ?? null,
           pollResults: post.pollResults ?? null,
           interests: post.interests,
+          taggedUserIds: post.taggedUserIds ?? [],
           taggedUsers: post.taggedUsers ?? [],
           type: post.type,
           createdAt: post.createdAt,
@@ -250,8 +258,18 @@ async function getFeed(req, res) {
 /**
  * Get all posts from all users (paginated).
  * GET /api/v1/posts?page=1&limit=20
- * Returns: { success, posts: [...], pagination }. Same list shape as /posts/my.
+ * Returns: { success, posts: [...], pagination }. Each post includes taggedUserIds and taggedUsers for mentions.
  */
+function toTaggedUser(doc) {
+  if (!doc || !doc._id) return null;
+  return {
+    id: doc._id.toString(),
+    name: doc.name ?? null,
+    username: doc.username ?? null,
+    profilePictureUrl: doc.profilePictureUrl ?? null,
+  };
+}
+
 async function getAllPosts(req, res) {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -264,14 +282,27 @@ async function getAllPosts(req, res) {
       .limit(limit)
       .populate('userId', 'name username profilePictureUrl')
       .populate('interests', 'name')
-      .select('_id userId type content media poll interests likesCount commentsCount sharesCount viewsCount createdAt')
+      .populate('taggedUserIds', 'name username profilePictureUrl')
+      .select('_id userId type content media poll interests taggedUserIds likesCount commentsCount sharesCount viewsCount createdAt')
       .lean();
 
     const total = await Post.countDocuments({ isActive: true });
 
+    const postsWithTagged = posts.map((p) => {
+      const tagged = p.taggedUserIds || [];
+      const taggedIds = tagged.map((u) => (u && u._id ? u._id.toString() : u.toString()));
+      const taggedUsers = tagged.map(toTaggedUser).filter(Boolean);
+      const { taggedUserIds: _, ...rest } = p;
+      return {
+        ...rest,
+        taggedUserIds: taggedIds,
+        taggedUsers,
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      posts,
+      posts: postsWithTagged,
       pagination: {
         page,
         limit,

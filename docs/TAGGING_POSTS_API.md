@@ -17,9 +17,13 @@ Users can tag/mention other users in a post. The backend stores `taggedUserIds` 
 
 ## Where tagged users appear
 
-- **POST /api/v1/posts** (create) – response `post.taggedUserIds` and `post.taggedUsers`
-- **GET /api/v1/posts/:id** – `post.taggedUserIds` and `post.taggedUsers`
-- **GET /api/v1/feed** – each feed item has `taggedUsers: [{ id, name, username, profilePictureUrl }, ...]`
-- **GET /api/v1/me/saved-posts** – each post has `taggedUsers`
+All of these include **taggedUserIds** (array of IDs) and **taggedUsers** (array of `{ id, name, username, profilePictureUrl }`):
 
-The app can render @username from `taggedUsers` and link to profile using `id`.
+- **POST /api/v1/posts** (create) – response `post.taggedUserIds` and `post.taggedUsers`
+- **GET /api/v1/posts/:id** – single post
+- **GET /api/v1/posts** – list all posts (Discover); each item has `taggedUserIds` and `taggedUsers`
+- **GET /api/v1/posts/my** – my posts; each item has `taggedUserIds` and `taggedUsers`
+- **GET /api/v1/feed** – feed; each item has `taggedUserIds` and `taggedUsers`
+- **GET /api/v1/me/saved-posts** – saved posts; each item has `taggedUserIds` and `taggedUsers`
+
+The app can render “With @username” from `taggedUsers` and link to profile using `id`.

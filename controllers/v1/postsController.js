@@ -270,13 +270,22 @@ async function getMyPosts(req, res) {
         .limit(limit)
         .populate('userId', 'name username profilePictureUrl')
         .populate('interests', 'name')
+        .populate('taggedUserIds', 'name username profilePictureUrl')
         .lean(),
       Post.countDocuments({ userId, isActive: true }),
     ]);
 
+    const postsWithTagged = posts.map((p) => {
+      const tagged = p.taggedUserIds || [];
+      const taggedIds = tagged.map((u) => (u && u._id ? u._id.toString() : u.toString()));
+      const taggedUsersList = tagged.map(toTaggedUser).filter(Boolean);
+      const { taggedUserIds: _ids, ...rest } = p;
+      return { ...rest, taggedUserIds: taggedIds, taggedUsers: taggedUsersList };
+    });
+
     return res.status(200).json({
       success: true,
-      posts,
+      posts: postsWithTagged,
       pagination: {
         page,
         limit,

@@ -267,6 +267,13 @@ async function getMySavedPosts(req, res) {
               in: { _id: '$$i._id', name: '$$i.name' },
             },
           },
+          taggedUserIds: {
+            $map: {
+              input: { $ifNull: ['$taggedUserIds', []] },
+              as: 'id',
+              in: { $toString: '$$id' },
+            },
+          },
           taggedUsers: {
             $map: {
               input: { $ifNull: ['$taggedUsersDoc', []] },
@@ -304,6 +311,7 @@ async function getMySavedPosts(req, res) {
           userVote: post.userVote ?? null,
           pollResults: post.pollResults ?? null,
           interests: post.interests,
+          taggedUserIds: post.taggedUserIds ?? [],
           taggedUsers: post.taggedUsers ?? [],
           type: post.type,
           createdAt: post.createdAt,
