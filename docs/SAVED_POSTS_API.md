@@ -35,9 +35,10 @@ Base: **`/api/v1`**. All endpoints require **JWT** (`Authorization: Bearer <toke
 **GET** `/api/v1/me/saved-posts?page=1&limit=20`
 
 - **Query:** `page` (default 1), `limit` (default 20, max 100).
-- **Response:** Same shape as feed items so the app can reuse the same post card:
-  - `posts`: array of `{ _id, author, content, media, type, likesCount, commentsCount, sharesCount, viewsCount, isLiked, isSaved: true, userVote, pollResults, interests, createdAt }`
-  - `pagination`: `{ page, limit, total, hasMore }`
+- **Response:** Same shape as feed items so the app can reuse the same post card. Each post includes author in several forms so the app never shows "Anonymous":
+  - `author`: `{ _id, id, name, username, profilePictureUrl }` (both `_id` and `id` for compatibility)
+  - `authorName`, `authorUsername`, `authorPhotoUrl`: top-level fallbacks
+  - `posts`: array of post objects; `pagination`: `{ page, limit, total, hasMore }`
 
 ---
 

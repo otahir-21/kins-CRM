@@ -296,9 +296,15 @@ async function getMySavedPosts(req, res) {
       .map((pid) => {
         const post = posts.find((p) => p._id.toString() === pid);
         if (!post) return null;
+        const author = post.author || {};
+        const authorId = author._id != null ? author._id.toString() : (author.id != null ? author.id : null);
+        const authorWithId = authorId ? { ...author, _id: authorId, id: authorId } : author;
         return {
           _id: post._id,
-          author: post.author,
+          author: authorWithId,
+          authorName: author.name ?? null,
+          authorUsername: author.username ?? null,
+          authorPhotoUrl: author.profilePictureUrl ?? null,
           content: post.content,
           media: post.media,
           poll: post.poll,

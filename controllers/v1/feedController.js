@@ -214,9 +214,15 @@ async function getFeed(req, res) {
         const post = posts.find((p) => p._id.toString() === pid.toString());
         if (!post) return null;
         const entry = entryByPostId[pid.toString()];
+        const author = post.author || {};
+        const authorId = author._id != null ? author._id.toString() : (author.id != null ? author.id : null);
+        const authorWithId = authorId ? { ...author, _id: authorId, id: authorId } : author;
         return {
           _id: post._id,
-          author: post.author,
+          author: authorWithId,
+          authorName: author.name ?? null,
+          authorUsername: author.username ?? null,
+          authorPhotoUrl: author.profilePictureUrl ?? null,
           content: post.content,
           media: post.media,
           likesCount: post.likesCount ?? 0,
