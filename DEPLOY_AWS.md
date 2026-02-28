@@ -31,6 +31,7 @@ If the dashboard loads but a page shows **"Endpoint not found"** and **Retry**:
    - **Same-origin:** The server must serve the built frontend so the UI and API share the same origin. In the deploy workflow we run `npm run build` so `frontend/dist` exists; then `npm start` serves both. If you deploy without building, there is no `frontend/dist`, so GET `/` and all UI routes hit the 404 handler. **Fix:** Run `npm run build` on the server (or in CI) before starting the app.
    - **Separate frontend:** If the CRM UI is hosted elsewhere (e.g. Vercel, another domain), build it with **`VITE_API_URL=http://16.16.96.232`** (or your API URL) so all API requests go to your EC2 API. Without this, the built app may send requests to the wrong host and get 404.
 4. **Verify backend:** On the server run `curl http://localhost:3000/health` and `curl http://localhost:3000/api/interests` (or the path that failed). If these work locally but the browser gets 404, the browser is likely hitting a different host or path (check Network tab URL).
+5. **404 with path `/api/api/...`:** The frontend was built with `VITE_API_URL=/api`. That makes axios request `/api` + `/api/interests` = `/api/api/interests`. **Fix:** Rebuild without setting `VITE_API_URL`, or set it to the full API origin (e.g. `http://16.16.96.232`). For same-origin (UI and API on one server), leave `VITE_API_URL` unset when running `npm run build`.
 
 ---
 

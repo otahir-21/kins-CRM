@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Same-origin when frontend is served by the same app (e.g. Vercel single deploy); override with VITE_API_URL for separate frontend
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:3000');
+// Path-only (e.g. /api) would cause double /api prefix; use same-origin instead so requests stay /api/...
+const raw = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:3000');
+const API_BASE_URL = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? '' : raw;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
