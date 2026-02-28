@@ -19,11 +19,12 @@ const upload = multer({
 // Public: mobile app fetches active ads (no auth)
 router.get('/active', getActiveAds);
 
-// CRM: all below require JWT
-router.use(verifyJwt);
-
+// Public: CRM list all ads (no auth) – same data as mobile, list view for dashboard
 router.get('/', listAds);
-router.get('/:id', getAdById);
+
+// CRM: create/update/delete and get-by-id require JWT
+router.use(verifyJwt);
+router.get('/:id', getAdById); // get single ad (CRM)
 router.post('/', upload.single('image'), createAd);
 router.put('/:id', upload.single('image'), updateAd);
 router.delete('/:id', deleteAd);
