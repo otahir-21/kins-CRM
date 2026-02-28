@@ -4,6 +4,36 @@ Run the backend (API) on AWS so you can use the auth API and the rest from a pub
 
 ---
 
+## Quick health check
+
+After the app is running on your EC2 (e.g. `http://16.16.96.232`), point the frontend and scripts to that URL:
+
+- **Frontend:** Set `VITE_API_URL=http://16.16.96.232` (or your EC2 public IP/DNS) in your frontend build env.
+- **Scripts/tests:** `BASE_URL=http://16.16.96.232` (or use `API_BASE_URL` where applicable).
+
+Verify the API is up:
+
+```bash
+curl http://16.16.96.232/health
+```
+
+You should get a JSON response (e.g. `{"ok":true}` or similar). If you get "Connection refused", the Node process is not listening on that host/port or the security group is blocking inbound traffic.
+
+### "Endpoint not found" in the CRM UI
+
+If the dashboard loads but a page shows **"Endpoint not found"** and **Retry**:
+
+1. **Cause:** The API returned 404 — the request path did not match any route on the server.
+2. **Check:** In the browser open **Developer Tools → Network**. Find the failed request and look at:
+   - **Request URL** (e.g. `http://16.16.96.232/api/interests`)
+   - **Response** body (the server sends `{ error: 'Endpoint not found', method, path, hint }`).
+3. **Fix:**
+   - **Same-origin:** The server must serve the built frontend so the UI and API share the same origin. In the deploy workflow we run `npm run build` so `frontend/dist` exists; then `npm start` serves both. If you deploy without building, there is no `frontend/dist`, so GET `/` and all UI routes hit the 404 handler. **Fix:** Run `npm run build` on the server (or in CI) before starting the app.
+   - **Separate frontend:** If the CRM UI is hosted elsewhere (e.g. Vercel, another domain), build it with **`VITE_API_URL=http://16.16.96.232`** (or your API URL) so all API requests go to your EC2 API. Without this, the built app may send requests to the wrong host and get 404.
+4. **Verify backend:** On the server run `curl http://localhost:3000/health` and `curl http://localhost:3000/api/interests` (or the path that failed). If these work locally but the browser gets 404, the browser is likely hitting a different host or path (check Network tab URL).
+
+---
+
 ## Option A: One Node app (API + optional static frontend)
 
 **Single deployment:** One Node/Express process serves the API. You can serve the built frontend from the same origin or a separate CDN/S3 bucket.

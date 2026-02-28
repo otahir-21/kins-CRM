@@ -25,4 +25,5 @@ jobs:
             cd kins-CRM
             git pull origin main
             npm install
+            npm run build
             pm2 restart kins-api || pm2 start server.js --name kins-api
