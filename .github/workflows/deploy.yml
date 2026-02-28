@@ -13,11 +13,12 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: 16.16.96.232
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
           script: |
-            cd kins-CRM
+            cd /home/ubuntu/kins-CRM
             git pull origin main
             npm install
             pm2 reload kins-api || pm2 start server.js --name kins-api
