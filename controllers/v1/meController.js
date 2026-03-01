@@ -74,11 +74,11 @@ async function getFirebaseToken(req, res) {
       const detail = getLastFirebaseError();
       let message;
       if (missing.length) {
-        message = `Firebase not configured. Missing: ${missing.join(', ')}. Add them in Vercel → Project → Settings → Environment Variables (Production) and redeploy.`;
+        message = `Firebase not configured. Missing: ${missing.join(', ')}. Set these in the server environment (e.g. .env or host env vars) and restart.`;
       } else if (detail) {
         message = `Firebase init failed: ${detail}. Check FIREBASE_PRIVATE_KEY format (use \\n for newlines if pasted in one line).`;
       } else {
-        message = 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in Vercel Environment Variables and redeploy.';
+        message = 'Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in the server environment and restart.';
       }
       return res.status(503).json({
         success: false,

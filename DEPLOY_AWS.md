@@ -109,3 +109,53 @@ After deploy, **test auth** with:
 BASE_URL=https://your-api.example.com node test-auth-api.js +441234567890
 BASE_URL=https://your-api.example.com node test-auth-api.js +441234567890 123456
 ```
+
+---
+
+## EC2 shows no data (same MongoDB as Vercel)
+
+If the **same MongoDB (Atlas)** works on Vercel but on EC2 the CRM and app show **no data** (empty lists, zero stats):
+
+### 1. **MONGODB_URI not set or wrong on EC2**
+
+On EC2 the app loads env from a **`.env`** file in the project root (or from system/PM2 env). If `MONGODB_URI` is missing, the code falls back to `mongodb://localhost:27017/kins-crm`. The app then talks to MongoDB on the EC2 instance (often empty or not running), not Atlas.
+
+**Fix:**
+
+- SSH into EC2 and create or edit `.env` in the app directory (e.g. `/home/ubuntu/kins-CRM/.env`).
+- Set **exactly the same** `MONGODB_URI` you use on Vercel (copy from Vercel → Settings → Environment Variables).
+  ```bash
+  # Example – use your real Atlas URI
+  MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/kins?retryWrites=true&w=majority&appName=Kins
+  ```
+- Restart the app: `pm2 restart kins-api` (or your process name).
+- Reload the CRM; data should appear.
+
+**Check that it’s set:**
+
+```bash
+cd /home/ubuntu/kins-CRM
+node -e "require('dotenv').config(); console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'SET (length ' + process.env.MONGODB_URI.length + ')' : 'NOT SET');"
+```
+
+If you see `NOT SET`, the app is using the default (localhost) and will show no data until you add the Atlas URI to `.env` and restart.
+
+### 2. **Atlas Network Access blocking EC2**
+
+Atlas only allows connections from IPs (or CIDRs) you add in **Network Access**. Vercel’s IPs may be allowed; EC2’s public IP might not be.
+
+**Fix:**
+
+- In **MongoDB Atlas** → your project → **Network Access** → **Add IP Address**.
+- Either add your **EC2 instance’s public IP**, or (for testing) **Allow Access from Anywhere** `0.0.0.0/0`.
+- Save and wait a minute; then restart the app on EC2 and try again.
+
+If the URI is correct but the connection is blocked, the app returns **503** and “Database connection unavailable” (and the server logs will show a MongoDB connection error). If you see **200** but empty data, the URI is almost certainly wrong or not loaded (so the app is using localhost).
+
+### 3. **Summary**
+
+| Symptom | Likely cause | Action |
+|--------|---------------|--------|
+| 200 OK but empty lists / no data | `MONGODB_URI` not set or wrong on EC2 | Set same Atlas `MONGODB_URI` as Vercel in `.env`, restart app |
+| 503 “Database connection unavailable” | Atlas blocking EC2 IP or wrong URI | Add EC2 IP (or 0.0.0.0/0) in Atlas Network Access; confirm URI |
+| Same as Vercel | Env and Atlas access correct | — |

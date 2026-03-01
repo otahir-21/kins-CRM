@@ -1,6 +1,16 @@
 # Firebase env vars on production
 
-The Flutter app calls **GET /api/v1/me/firebase-token** on your **production** backend. If you see:
+The Flutter app calls **GET /api/v1/me/firebase-token** on your **production** backend.
+
+## "Chat sign-in is temporarily unavailable" in the app
+
+If the mobile app shows a message like **"Chat sign-in is temporarily unavailable. The server needs Firebase to be configured for chat. Please try again later."**, the app is hiding the raw backend error (which may have mentioned Vercel or env vars). **Fix:** Configure Firebase Admin on the server that actually runs your API (e.g. EC2 at `http://16.16.96.232`), not in the Flutter app. Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in that server's environment (e.g. `.env` on EC2, or Environment Variables on Vercel if the API is there). Then restart the API so it can return a custom token from `GET /me/firebase-token`.
+
+---
+
+## Backend returns "Firebase not configured"
+
+If you call the API directly and see:
 
 `Firebase not configured. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY.`
 
