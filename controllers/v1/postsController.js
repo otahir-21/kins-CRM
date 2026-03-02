@@ -157,6 +157,7 @@ async function createPost(req, res) {
         likesCount: post.likesCount,
         commentsCount: post.commentsCount,
         sharesCount: post.sharesCount,
+        repostsCount: post.repostsCount ?? 0,
         viewsCount: post.viewsCount,
         createdAt: post.createdAt,
       },

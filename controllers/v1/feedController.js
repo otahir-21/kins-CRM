@@ -177,6 +177,7 @@ async function getFeed(req, res) {
           likesCount: 1,
           commentsCount: 1,
           sharesCount: 1,
+          repostsCount: 1,
           viewsCount: 1,
           createdAt: 1,
           isLiked: 1,
@@ -249,6 +250,7 @@ async function getFeed(req, res) {
           likesCount: post.likesCount ?? 0,
           commentsCount: post.commentsCount ?? 0,
           sharesCount: post.sharesCount ?? 0,
+          repostsCount: post.repostsCount ?? 0,
           viewsCount: post.viewsCount ?? 0,
           isLiked: !!post.isLiked,
           userVote: post.userVote ?? null,
@@ -311,7 +313,7 @@ async function getAllPosts(req, res) {
       .populate('userId', 'name username profilePictureUrl')
       .populate('interests', 'name')
       .populate('taggedUserIds', 'name username profilePictureUrl')
-      .select('_id userId type content media poll interests taggedUserIds likesCount commentsCount sharesCount viewsCount createdAt')
+      .select('_id userId type content media poll interests taggedUserIds likesCount commentsCount sharesCount repostsCount viewsCount createdAt')
       .lean();
 
     const total = await Post.countDocuments({ isActive: true });

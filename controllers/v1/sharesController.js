@@ -54,8 +54,10 @@ async function sharePost(req, res) {
       caption: caption || null,
     });
 
-    // Increment sharesCount atomically
-    await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: 1 } });
+    // Increment sharesCount and (for repost) repostsCount
+    const update = { $inc: { sharesCount: 1 } };
+    if (type === 'repost') update.$inc.repostsCount = 1;
+    await Post.findByIdAndUpdate(postId, update);
 
     // When reposting, add this post to the feed of everyone who follows the current user (discover)
     if (type === 'repost') {
@@ -113,7 +115,7 @@ async function removeRepost(req, res) {
     }
 
     await Share.deleteOne({ _id: share._id });
-    await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: -1 } });
+    await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: -1, repostsCount: -1 } });
 
     // Remove this post from followers' feeds where it was added as "repost" by this user
     await UserFeed.deleteMany({ postId, repostedByUserId: userId });
@@ -251,6 +253,7 @@ async function getMyReposts(req, res) {
           likesCount: post.likesCount ?? 0,
           commentsCount: post.commentsCount ?? 0,
           sharesCount: post.sharesCount ?? 0,
+          repostsCount: post.repostsCount ?? 0,
           viewsCount: post.viewsCount ?? 0,
           createdAt: post.createdAt,
         },

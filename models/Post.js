@@ -40,6 +40,7 @@ const postSchema = new mongoose.Schema(
     likesCount: { type: Number, default: 0, min: 0 },
     commentsCount: { type: Number, default: 0, min: 0 },
     sharesCount: { type: Number, default: 0, min: 0 },
+    repostsCount: { type: Number, default: 0, min: 0 }, // number of users who reposted (shareType: 'repost')
     viewsCount: { type: Number, default: 0, min: 0 },
     reportCount: { type: Number, default: 0, min: 0, index: true },
 

@@ -76,6 +76,10 @@ Each item in `feed` can look like:
 - If the post is **not** a repost in this feed, `repostedBy` is `null` and `feedSource` is e.g. `"follower"` or `"interest"`.
 - If the post **is** a repost, `repostedBy` is set and `feedSource` is `"repost"`.
 
+### Repost counter
+
+Every post in feed, single-post, and posts list responses includes **`repostsCount`**: the number of users who reposted this post (shareType `repost` only). Use it to show a repost icon with label like "12 reposts". It is updated when users repost (`POST .../share` with `shareType: "repost"`) or remove repost (`DELETE .../share`).
+
 ## How to show it in the discover screen
 
 1. **Use the feed API for discover**  
