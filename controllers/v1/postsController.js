@@ -218,14 +218,21 @@ async function deletePost(req, res) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
 
-    const post = await Post.findById(id);
+    const post = await Post.findById(id).select('userId isActive');
 
     if (!post || !post.isActive) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
 
-    if (post.userId.toString() !== userId.toString()) {
-      return res.status(403).json({ success: false, error: 'Not authorized to delete this post.' });
+    // Compare author to current user (handle ObjectId, string, or populated userId)
+    const authorId = post.userId && (post.userId._id != null ? post.userId._id : post.userId);
+    const currentId = userId != null && (userId._id != null ? userId._id : userId);
+    if (!authorId || !currentId || String(authorId) !== String(currentId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized to delete this post.',
+        code: 'NOT_POST_AUTHOR',
+      });
     }
 
     post.isActive = false;

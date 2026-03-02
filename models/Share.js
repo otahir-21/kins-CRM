@@ -23,6 +23,6 @@ const shareSchema = new mongoose.Schema(
 // Indexes for queries
 shareSchema.index({ postId: 1, createdAt: -1 }); // Get shares for a post
 shareSchema.index({ userId: 1, createdAt: -1 }); // Get user's shares
-shareSchema.index({ userId: 1, postId: 1, shareType: 1 }); // Prevent duplicate shares
+shareSchema.index({ userId: 1, postId: 1, shareType: 1 }, { unique: true }); // One repost per user per post
 
 module.exports = mongoose.model('Share', shareSchema);

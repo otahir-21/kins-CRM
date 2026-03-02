@@ -33,6 +33,18 @@ async function sharePost(req, res) {
       return res.status(404).json({ success: false, error: 'Post not found.' });
     }
 
+    // Repost: one repost per user per post
+    if (type === 'repost') {
+      const existing = await Share.findOne({ userId, postId, shareType: 'repost' }).select('_id').lean();
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          error: 'You have already reposted this post.',
+          code: 'ALREADY_REPOSTED',
+        });
+      }
+    }
+
     // Create share
     const share = await Share.create({
       userId,
@@ -64,6 +76,13 @@ async function sharePost(req, res) {
       },
     });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: 'You have already reposted this post.',
+        code: 'ALREADY_REPOSTED',
+      });
+    }
     console.error('POST /posts/:postId/share error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to share post.' });
   }
