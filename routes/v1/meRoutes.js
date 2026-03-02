@@ -16,6 +16,7 @@ const {
   markMyNotificationsAllRead,
 } = require('../../controllers/v1/meController');
 const { getMySavedPosts } = require('../../controllers/v1/savedPostsController');
+const { getMyReposts } = require('../../controllers/v1/sharesController');
 
 const router = express.Router();
 
@@ -51,6 +52,7 @@ router.delete('/', deleteMe);
 router.get('/interests', getMyInterests);
 router.post('/interests', setMyInterests);
 router.get('/saved-posts', getMySavedPosts);
+router.get('/reposts', getMyReposts);
 router.get('/notifications/stats', getMyNotificationStats);
 router.get('/notifications', getMyNotifications);
 router.put('/notifications/read-all', markMyNotificationsAllRead);

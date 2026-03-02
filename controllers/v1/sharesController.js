@@ -116,6 +116,107 @@ async function getPostShares(req, res) {
 }
 
 /**
+ * List current user's reposts (paginated). For "Your reposts" / profile reposts list.
+ * GET /api/v1/me/reposts?page=1&limit=20
+ * Returns: { success, reposts: [ { post: {...}, repostedAt, caption }, ... ], pagination }
+ * Post shape matches feed/saved (author, content, media, interests, taggedUsers, etc.)
+ */
+async function getMyReposts(req, res) {
+  try {
+    const userId = req.userId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [shareDocs, total] = await Promise.all([
+      Share.find({ userId, shareType: 'repost' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .select('postId caption createdAt')
+        .lean(),
+      Share.countDocuments({ userId, shareType: 'repost' }),
+    ]);
+
+    if (shareDocs.length === 0) {
+      return res.status(200).json({
+        success: true,
+        reposts: [],
+        pagination: { page, limit, total: 0, hasMore: false },
+      });
+    }
+
+    const postIds = shareDocs.map((s) => s.postId);
+    const shareByPostId = {};
+    shareDocs.forEach((s) => {
+      shareByPostId[s.postId.toString()] = { repostedAt: s.createdAt, caption: s.caption || null };
+    });
+
+    const posts = await Post.find({ _id: { $in: postIds }, isActive: true })
+      .populate('userId', 'name username profilePictureUrl')
+      .populate('interests', 'name')
+      .populate('taggedUserIds', 'name username profilePictureUrl')
+      .select('_id userId type content media poll interests taggedUserIds likesCount commentsCount sharesCount viewsCount createdAt')
+      .lean();
+
+    const toTaggedUser = (doc) => {
+      if (!doc || !doc._id) return null;
+      return {
+        id: doc._id.toString(),
+        name: doc.name ?? null,
+        username: doc.username ?? null,
+        profilePictureUrl: doc.profilePictureUrl ?? null,
+      };
+    };
+
+    const reposts = postIds.map((pid) => {
+      const post = posts.find((p) => p._id.toString() === pid.toString());
+      const meta = shareByPostId[pid.toString()];
+      if (!post || !meta) return null;
+      const author = post.userId;
+      const authorId = author && (author._id || author.id);
+      const authorIdStr = authorId != null ? authorId.toString() : null;
+      const taggedUsers = (post.taggedUserIds || []).map(toTaggedUser).filter(Boolean);
+      const taggedUserIds = (post.taggedUserIds || []).map((u) => (u && (u._id || u.id) ? (u._id || u.id).toString() : u.toString()));
+      return {
+        post: {
+          _id: post._id,
+          author: author ? { _id: authorIdStr, id: authorIdStr, name: author.name, username: author.username, profilePictureUrl: author.profilePictureUrl } : null,
+          type: post.type,
+          content: post.content,
+          media: post.media || [],
+          poll: post.poll ?? null,
+          interests: post.interests || [],
+          taggedUserIds,
+          taggedUsers,
+          likesCount: post.likesCount ?? 0,
+          commentsCount: post.commentsCount ?? 0,
+          sharesCount: post.sharesCount ?? 0,
+          viewsCount: post.viewsCount ?? 0,
+          createdAt: post.createdAt,
+        },
+        repostedAt: meta.repostedAt,
+        caption: meta.caption,
+      };
+    }).filter(Boolean);
+
+    return res.status(200).json({
+      success: true,
+      reposts,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore: skip + reposts.length < total,
+      },
+    });
+  } catch (err) {
+    console.error('GET /me/reposts error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch reposts.' });
+  }
+}
+
+/**
  * Increment view count for a post.
  * POST /api/v1/posts/:postId/view
  */
@@ -137,4 +238,4 @@ async function incrementView(req, res) {
   }
 }
 
-module.exports = { sharePost, getPostShares, incrementView };
+module.exports = { sharePost, getPostShares, getMyReposts, incrementView };

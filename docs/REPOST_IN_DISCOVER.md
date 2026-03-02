@@ -1,5 +1,41 @@
 # Showing reposts in the discover screen
 
+## List of reposts (separate API)
+
+To show a **dedicated list of reposts** (e.g. "Your reposts" or a Reposts tab on profile), use:
+
+**`GET /api/v1/me/reposts?page=1&limit=20`** (requires JWT)
+
+Response:
+
+```json
+{
+  "success": true,
+  "reposts": [
+    {
+      "post": { "_id": "...", "author": {...}, "content": "...", "media": [...], ... },
+      "repostedAt": "2026-02-27T12:00:00.000Z",
+      "caption": null
+    }
+  ],
+  "pagination": { "page": 1, "limit": 20, "total": 5, "hasMore": false }
+}
+```
+
+- **`reposts`**: array of `{ post, repostedAt, caption }`. Use `post` with the same card as feed; show `repostedAt` if you want "Reposted on …".
+- No separate "repost" entity—each item is the original post plus when you reposted it.
+
+## Backend response shapes (for app parsing)
+
+The app can look for the list in several places. This backend returns:
+
+| Endpoint | List location | Example |
+|----------|----------------|---------|
+| `GET /api/v1/feed?page=1&limit=20` | **`response.feed`** | `{ success: true, feed: [...], pagination: {...} }` |
+| `GET /api/v1/posts?page=1&limit=20` | **`response.posts`** | `{ success: true, posts: [...], pagination: {...} }` |
+
+So `response['feed']` (feed endpoint) and `response['posts']` (posts endpoint) are both supported by the flexible parser. One malformed item should be skipped per-item so the rest of the list still shows.
+
 ## Backend behavior
 
 - **Feed endpoint:** `GET /api/v1/feed?page=1&limit=20` (requires JWT).
