@@ -31,6 +31,9 @@ function getAuth() {
     const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    // Log what the process sees (no secret values) so we can debug PM2/env
+    const keyLen = typeof privateKey === 'string' ? privateKey.length : 0;
+    console.log('[Firebase] getAuth: projectId=' + (projectId ? 'set' : 'MISSING') + ', clientEmail=' + (clientEmail ? 'set' : 'MISSING') + ', privateKey length=' + keyLen);
     if (!projectId || !clientEmail || !privateKey || (typeof privateKey === 'string' && !privateKey.trim())) {
       return null;
     }

@@ -66,3 +66,18 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADAN...\n-----END PRI
 - The API response may include:
   - `missing`: list of env var names that are not set (e.g. `["FIREBASE_PRIVATE_KEY"]`).
   - `detail`: the actual Firebase error (e.g. "invalid PEM formatted message") when vars are set but the key format is wrong—use this to fix FIREBASE_PRIVATE_KEY.
+
+---
+
+## App says "The custom token format is incorrect" (invalid-custom-token)
+
+The backend returns a token, but Firebase **client** rejects it. Fix the following:
+
+1. **Same Firebase project**  
+   The backend uses `FIREBASE_PROJECT_ID` (e.g. `kins-b4afb`). Your Flutter app must use the **same** project: check `GoogleService-Info.plist` (iOS) and `google-services.json` (Android). The `project_id` there must match `FIREBASE_PROJECT_ID`. If the app is using a different project, the token will be rejected.
+
+2. **Use the raw token string**  
+   The API returns `{ success: true, token: "<jwt>", customToken: "<jwt>" }`. The app must pass the **exact** string (e.g. `response.data.token` or `response.data.customToken`) to `FirebaseAuth.signInWithCustomToken(token)`. Do not pass the whole response object or a modified string.
+
+3. **Backend response**  
+   The backend now returns both `token` and `customToken` (same value) so the app can read either. UID in the token is the user’s MongoDB `_id` string (max 128 chars).

@@ -64,10 +64,14 @@ async function getMe(req, res) {
 /**
  * GET /me/firebase-token - get Firebase custom token for chat (Firestore/Storage).
  * UID in the token = current user's MongoDB _id so Flutter can use same identity in Firebase.
+ * Returns raw JWT string; app must pass it to FirebaseAuth.signInWithCustomToken(token) unchanged.
  */
 async function getFirebaseToken(req, res) {
   try {
-    const uid = req.userId.toString();
+    const uid = (req.userId != null ? req.userId.toString() : '').trim();
+    if (!uid || uid.length > 128) {
+      return res.status(400).json({ success: false, error: 'Invalid user id for token.' });
+    }
     const token = await createCustomToken(uid);
     if (!token) {
       const missing = getMissingFirebaseEnv();
@@ -87,7 +91,12 @@ async function getFirebaseToken(req, res) {
         detail: detail || undefined,
       });
     }
-    return res.status(200).json({ success: true, token });
+    const tokenString = typeof token === 'string' ? token : String(token);
+    return res.status(200).json({
+      success: true,
+      token: tokenString,
+      customToken: tokenString,
+    });
   } catch (err) {
     console.error('GET /me/firebase-token error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to create Firebase token.' });
