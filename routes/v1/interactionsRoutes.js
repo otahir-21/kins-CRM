@@ -16,6 +16,7 @@ const {
 } = require('../../controllers/v1/commentsController');
 const {
   sharePost,
+  removeRepost,
   getPostShares,
   incrementView,
 } = require('../../controllers/v1/sharesController');
@@ -56,6 +57,7 @@ router.delete('/comments/:commentId', deleteComment);
 
 // ===== SHARES =====
 router.post('/posts/:postId/share', sharePost);
+router.delete('/posts/:postId/share', removeRepost);
 router.get('/posts/:postId/shares', getPostShares);
 
 // ===== VIEWS =====

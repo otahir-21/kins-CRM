@@ -25,6 +25,17 @@ Response:
 - **`reposts`**: array of `{ post, repostedAt, caption }`. Use `post` with the same card as feed; show `repostedAt` if you want "Reposted on …".
 - No separate "repost" entity—each item is the original post plus when you reposted it.
 
+### Remove repost (undo repost)
+
+When the user clicks repost **again** on a post they already reposted, call:
+
+**`DELETE /api/v1/posts/:postId/share`** (requires JWT)
+
+- **200** – `{ success: true, message: "Repost removed." }` — remove the post from "Your reposts" and update UI (e.g. repost button state).
+- **404** – `{ success: false, error: "You have not reposted this post.", code: "NOT_REPOSTED" }` — user hasn’t reposted this post.
+
+Flow: first click → `POST .../share` with `shareType: "repost"` (repost). Second click → `DELETE .../share` (remove from repost section).
+
 ## Backend response shapes (for app parsing)
 
 The app can look for the list in several places. This backend returns:

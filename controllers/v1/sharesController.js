@@ -1,5 +1,6 @@
 const Share = require('../../models/Share');
 const Post = require('../../models/Post');
+const UserFeed = require('../../models/UserFeed');
 const FeedService = require('../../services/FeedService');
 const mongoose = require('mongoose');
 
@@ -85,6 +86,45 @@ async function sharePost(req, res) {
     }
     console.error('POST /posts/:postId/share error:', err);
     return res.status(500).json({ success: false, error: err.message || 'Failed to share post.' });
+  }
+}
+
+/**
+ * Remove repost (undo repost). Call when user clicks repost again on a post they already reposted.
+ * DELETE /api/v1/posts/:postId/share
+ * Body or query: shareType=repost (optional; only repost can be removed this way).
+ */
+async function removeRepost(req, res) {
+  try {
+    const { postId } = req.params;
+    const userId = req.userId;
+
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ success: false, error: 'Invalid post ID.' });
+    }
+
+    const share = await Share.findOne({ userId, postId, shareType: 'repost' });
+    if (!share) {
+      return res.status(404).json({
+        success: false,
+        error: 'You have not reposted this post.',
+        code: 'NOT_REPOSTED',
+      });
+    }
+
+    await Share.deleteOne({ _id: share._id });
+    await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: -1 } });
+
+    // Remove this post from followers' feeds where it was added as "repost" by this user
+    await UserFeed.deleteMany({ postId, repostedByUserId: userId });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Repost removed.',
+    });
+  } catch (err) {
+    console.error('DELETE /posts/:postId/share error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to remove repost.' });
   }
 }
 
@@ -257,4 +297,4 @@ async function incrementView(req, res) {
   }
 }
 
-module.exports = { sharePost, getPostShares, getMyReposts, incrementView };
+module.exports = { sharePost, removeRepost, getPostShares, getMyReposts, incrementView };
