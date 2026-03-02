@@ -9,7 +9,9 @@ const userFeedSchema = new mongoose.Schema(
     score: { type: Number, required: true, default: 0 },
     
     // Source of the feed entry (for analytics and future filters)
-    source: { type: String, default: 'interest', enum: ['interest', 'follower', 'trending', 'location', 'recommended'] },
+    source: { type: String, default: 'interest', enum: ['interest', 'follower', 'trending', 'location', 'recommended', 'repost'] },
+    // When source is 'repost', who reposted this post (so discover can show "X reposted")
+    repostedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     
     // Metadata for future ranking adjustments
     metadata: {

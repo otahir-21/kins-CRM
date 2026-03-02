@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const UserFeed = require('../models/UserFeed');
 const Follow = require('../models/Follow');
+const Post = require('../models/Post');
 
 /**
  * FeedService: Modular feed generation and scoring.
@@ -137,6 +138,49 @@ class FeedService {
 
     console.log(`Post ${postId}: fanned out to ${feedEntries.length} users (interest + follower).`);
     return { targetedUsers: feedEntries.length };
+  }
+
+  /**
+   * Fan-out a repost: add the original post to the feed of everyone who follows the reposter.
+   * So in discover, followers see "X reposted" and the original post.
+   * @param {ObjectId} reposterUserId - User who reposted
+   * @param {ObjectId} postId - Original post that was reposted
+   * @returns {Promise<{ targetedUsers: number }>}
+   */
+  async fanOutRepost(reposterUserId, postId) {
+    const followers = await Follow.find({ followingId: reposterUserId }).select('followerId').lean();
+    const followerIds = followers.map((f) => f.followerId).filter(Boolean);
+    if (followerIds.length === 0) {
+      return { targetedUsers: 0 };
+    }
+
+    const post = await Post.findById(postId).select('createdAt').lean();
+    if (!post) return { targetedUsers: 0 };
+
+    const bulkOps = followerIds.map((followerId) => ({
+      updateOne: {
+        filter: { userId: followerId, postId },
+        update: {
+          $set: {
+            score: 80,
+            source: 'repost',
+            repostedByUserId: reposterUserId,
+            metadata: { interestMatch: false, followerBoost: 0, engagementBoost: 0 },
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            userId: followerId,
+            postId,
+            createdAt: post.createdAt,
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    await UserFeed.bulkWrite(bulkOps);
+    console.log(`Repost ${postId} by ${reposterUserId}: fanned out to ${followerIds.length} followers.`);
+    return { targetedUsers: followerIds.length };
   }
 
   /**

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const UserFeed = require('../../models/UserFeed');
 const Post = require('../../models/Post');
+const User = require('../../models/User');
 
 /**
  * Get user feed (paginated) with isLiked, userVote, and pollResults embedded.
@@ -18,7 +19,7 @@ async function getFeed(req, res) {
       .sort({ score: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('postId score source')
+      .select('postId score source repostedByUserId')
       .lean();
 
     if (feedEntries.length === 0) {
@@ -31,9 +32,19 @@ async function getFeed(req, res) {
 
     const postIds = feedEntries.map((e) => e.postId);
     const entryByPostId = {};
+    const reposterIds = new Set();
     feedEntries.forEach((e) => {
-      entryByPostId[e.postId.toString()] = { score: e.score, source: e.source };
+      entryByPostId[e.postId.toString()] = { score: e.score, source: e.source, repostedByUserId: e.repostedByUserId };
+      if (e.repostedByUserId) reposterIds.add(e.repostedByUserId.toString());
     });
+
+    const reposterDocs = reposterIds.size > 0
+      ? await User.find({ _id: { $in: Array.from(reposterIds).map((id) => new mongoose.Types.ObjectId(id)) } })
+          .select('_id name username profilePictureUrl')
+          .lean()
+      : [];
+    const reposterById = {};
+    reposterDocs.forEach((u) => { reposterById[u._id.toString()] = u; });
 
     const pipeline = [
       { $match: { _id: { $in: postIds }, isActive: true } },
@@ -217,6 +228,16 @@ async function getFeed(req, res) {
         const author = post.author || {};
         const authorId = author._id != null ? author._id.toString() : (author.id != null ? author.id : null);
         const authorWithId = authorId ? { ...author, _id: authorId, id: authorId } : author;
+        const repostedByUserId = entry.repostedByUserId && entry.repostedByUserId.toString();
+        const reposter = repostedByUserId ? reposterById[repostedByUserId] : null;
+        const repostedBy = reposter
+          ? {
+              id: reposter._id.toString(),
+              name: reposter.name ?? null,
+              username: reposter.username ?? null,
+              profilePictureUrl: reposter.profilePictureUrl ?? null,
+            }
+          : null;
         return {
           _id: post._id,
           author: authorWithId,
@@ -239,6 +260,7 @@ async function getFeed(req, res) {
           createdAt: post.createdAt,
           feedScore: entry.score,
           feedSource: entry.source,
+          repostedBy,
         };
       })
       .filter(Boolean);

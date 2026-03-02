@@ -47,6 +47,19 @@ then those variables are not set or the key format is wrong.
    - `client_email` → **FIREBASE_CLIENT_EMAIL**
    - `private_key` → **FIREBASE_PRIVATE_KEY** (the full string, including `\n` characters as in the file)
 
+### .env format (important)
+
+In `.env` you must use **variable names**, not JSON keys. **Wrong:** `"private_key": "-----BEGIN...` (that is JSON; dotenv will not set FIREBASE_PRIVATE_KEY). **Correct:** one line like this (replace the `...` with the full key from the JSON, all on one line):
+
+```env
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADAN...\n-----END PRIVATE KEY-----\n"
+```
+
+- The variable name is **FIREBASE_PRIVATE_KEY** (no quotes around the name).
+- The value is in double quotes and must be **one single line** (the key contains `\n` for newlines).
+- Do **not** put the raw JSON (`"private_key": "..."`) in .env.
+- Remove any **FIREBASE_SERVICE_ACCOUNT** multi-line JSON block from .env; the app only reads the three vars above.
+
 ### After setting and redeploying
 
 - Call **GET /api/v1/me/firebase-token** again with a valid JWT.

@@ -1,7 +1,8 @@
-require('dotenv').config();
+const path = require('path');
+// Load .env from app root so it works regardless of PM2/cwd
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 const multer = require('multer');

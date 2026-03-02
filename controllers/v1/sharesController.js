@@ -1,5 +1,6 @@
 const Share = require('../../models/Share');
 const Post = require('../../models/Post');
+const FeedService = require('../../services/FeedService');
 const mongoose = require('mongoose');
 
 /**
@@ -42,6 +43,15 @@ async function sharePost(req, res) {
 
     // Increment sharesCount atomically
     await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: 1 } });
+
+    // When reposting, add this post to the feed of everyone who follows the current user (discover)
+    if (type === 'repost') {
+      try {
+        await FeedService.fanOutRepost(userId, post._id);
+      } catch (err) {
+        console.error('FeedService.fanOutRepost error:', err.message);
+      }
+    }
 
     return res.status(201).json({
       success: true,
