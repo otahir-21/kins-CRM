@@ -92,10 +92,22 @@ async function getFirebaseToken(req, res) {
       });
     }
     const tokenString = typeof token === 'string' ? token : String(token);
+    const projectId = process.env.FIREBASE_PROJECT_ID || '';
+    if (tokenString.split('.').length !== 3) {
+      console.error('[firebase-token] Token is not a valid JWT (expected 3 parts).');
+    } else {
+      try {
+        const payload = JSON.parse(Buffer.from(tokenString.split('.')[1], 'base64url').toString());
+        console.log('[firebase-token] Issued token for uid=', payload.uid || payload.sub, 'project=', projectId);
+      } catch (_) {
+        console.warn('[firebase-token] Could not decode token payload.');
+      }
+    }
     return res.status(200).json({
       success: true,
       token: tokenString,
       customToken: tokenString,
+      firebaseProjectId: projectId,
     });
   } catch (err) {
     console.error('GET /me/firebase-token error:', err);

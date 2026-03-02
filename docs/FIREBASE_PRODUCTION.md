@@ -73,11 +73,32 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADAN...\n-----END PRI
 
 The backend returns a token, but Firebase **client** rejects it. Fix the following:
 
-1. **Same Firebase project**  
-   The backend uses `FIREBASE_PROJECT_ID` (e.g. `kins-b4afb`). Your Flutter app must use the **same** project: check `GoogleService-Info.plist` (iOS) and `google-services.json` (Android). The `project_id` there must match `FIREBASE_PROJECT_ID`. If the app is using a different project, the token will be rejected.
+### 1. Same Firebase project (most common cause)
 
-2. **Use the raw token string**  
-   The API returns `{ success: true, token: "<jwt>", customToken: "<jwt>" }`. The app must pass the **exact** string (e.g. `response.data.token` or `response.data.customToken`) to `FirebaseAuth.signInWithCustomToken(token)`. Do not pass the whole response object or a modified string.
+The backend uses `FIREBASE_PROJECT_ID` (e.g. `kins-b4afb`). Your Flutter app **must** use the **exact same** project.
 
-3. **Backend response**  
-   The backend now returns both `token` and `customToken` (same value) so the app can read either. UID in the token is the user’s MongoDB `_id` string (max 128 chars).
+- **iOS:** Open `ios/Runner/GoogleService-Info.plist` and check the value of `PROJECT_ID` (or `project_id`). It must be `kins-b4afb` (or whatever your backend’s `FIREBASE_PROJECT_ID` is).
+- **Android:** Open `android/app/google-services.json` and check `"project_id"` in the first `client` / project object. It must match.
+- If the app was created with a different Firebase project, add an app to the **same** project in Firebase Console (Project settings → Your apps), download the new config files, and replace the plist/json. Then rebuild the app.
+
+The API now returns `firebaseProjectId` in the response so the app can log it and confirm it matches the app’s project.
+
+### 2. Pass the raw token string only
+
+The API returns: `{ success: true, token: "<jwt>", customToken: "<jwt>", firebaseProjectId: "kins-b4afb" }`.
+
+The app must pass **only** the JWT string to `signInWithCustomToken`, e.g.:
+
+- `final token = response.data['token'] as String;`  
+  or  
+- `final token = response.data['customToken'];`  
+  then  
+- `await FirebaseAuth.instance.signInWithCustomToken(token);`
+
+Do **not** pass `response.data`, `response.toString()`, or a truncated string. The token should be a long string (hundreds of characters) with **exactly two dots** in it (JWT format: `header.payload.signature`). If you log `token.length` it should be well over 500.
+
+### 3. Backend check
+
+After deploy, when the app requests a token, the server logs something like:  
+`[firebase-token] Issued token for uid=69a435a9bcf76c208ced7643 project=kins-b4afb`  
+Confirm `project=` matches your app’s Firebase project ID.
