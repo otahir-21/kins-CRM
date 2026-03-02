@@ -2,6 +2,20 @@
 
 The Flutter app calls **GET /api/v1/me/firebase-token** on your **production** backend.
 
+**Project in use:** Backend and app must both use the **same** Firebase project. This project uses **kivi-b6393** (set `FIREBASE_PROJECT_ID=kivi-b6393` and the matching service account in `.env`; app must use `GoogleService-Info.plist` / `google-services.json` from project **kivi-b6393**).
+
+### Switch backend to kivi-b6393
+
+On the server (e.g. EC2), edit `.env` and set:
+
+```env
+FIREBASE_PROJECT_ID=kivi-b6393
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@kivi-b6393.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...full key from JSON, one line with \\n...\n-----END PRIVATE KEY-----\n"
+```
+
+Use the **full** `private_key` from your kivi-b6393 service account JSON, on **one line**, with `\n` for newlines (no real line breaks inside the quotes). Remove any old `FIREBASE_*` lines for kins-b4afb. Then run `pm2 restart kins-api --update-env` and `node scripts/check-firebase-env.js`. Ensure the Flutter app uses config for project **kivi-b6393**.
+
 ## "Chat sign-in is temporarily unavailable" in the app
 
 If the mobile app shows a message like **"Chat sign-in is temporarily unavailable. The server needs Firebase to be configured for chat. Please try again later."**, the app is hiding the raw backend error (which may have mentioned Vercel or env vars). **Fix:** Configure Firebase Admin on the server that actually runs your API (e.g. EC2 at `http://16.16.96.232`), not in the Flutter app. Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in that server's environment (e.g. `.env` on EC2, or Environment Variables on Vercel if the API is there). Then restart the API so it can return a custom token from `GET /me/firebase-token`.
@@ -40,12 +54,12 @@ then those variables are not set or the key format is wrong.
 
 ### Getting the values from Firebase
 
-1. Firebase Console → **Project settings** (gear) → **Service accounts**.
-2. **Generate new private key** → download the JSON file.
+1. Firebase Console → select project **kivi-b6393** → **Project settings** (gear) → **Service accounts**.
+2. **Generate new private key** → download the JSON file (or use the existing service account for kivi-b6393).
 3. From that file:
-   - `project_id` → **FIREBASE_PROJECT_ID**
-   - `client_email` → **FIREBASE_CLIENT_EMAIL**
-   - `private_key` → **FIREBASE_PRIVATE_KEY** (the full string, including `\n` characters as in the file)
+   - `project_id` → **FIREBASE_PROJECT_ID** (use `kivi-b6393`)
+   - `client_email` → **FIREBASE_CLIENT_EMAIL** (e.g. `firebase-adminsdk-fbsvc@kivi-b6393.iam.gserviceaccount.com`)
+   - `private_key` → **FIREBASE_PRIVATE_KEY** (the full string, one line with `\n` for newlines—see below)
 
 ### .env format (important)
 
