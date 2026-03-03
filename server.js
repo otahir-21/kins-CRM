@@ -71,6 +71,7 @@ const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const Ad = require('./models/Ad');
 const BunnyService = require('./services/BunnyService');
+const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
 const { connectDB } = require('./config/db');
 const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
@@ -1060,9 +1061,15 @@ app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
     if (!BunnyService.isConfigured()) {
       return res.status(503).json({ success: false, error: 'Image upload not configured (Bunny CDN).' });
     }
-    const ext = (req.file.originalname || '').split('.').pop() || 'jpg';
-    const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'ads');
+    let buffer = req.file.buffer;
+    try {
+      const resized = await resizeAdImageToSpec(req.file.buffer);
+      buffer = resized.buffer;
+    } catch (e) {
+      return res.status(400).json({ success: false, error: 'Invalid or unsupported image. Use JPEG or PNG.' });
+    }
+    const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.jpg`;
+    const { cdnUrl } = await BunnyService.upload(buffer, fileName, 'ads');
     const title = (req.body.title || '').trim() || null;
     const isActive = req.body.isActive !== undefined ? (req.body.isActive === true || req.body.isActive === 'true') : true;
     const order = parseInt(req.body.order, 10);
@@ -1089,9 +1096,15 @@ app.put('/api/ads/:id', adsUpload.single('image'), async (req, res) => {
     const ad = await Ad.findById(id);
     if (!ad) return res.status(404).json({ success: false, error: 'Ad not found.' });
     if (req.file && req.file.buffer && BunnyService.isConfigured()) {
-      const ext = (req.file.originalname || '').split('.').pop() || 'jpg';
-      const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
-      const { cdnUrl } = await BunnyService.upload(req.file.buffer, fileName, 'ads');
+      let buffer = req.file.buffer;
+      try {
+        const resized = await resizeAdImageToSpec(req.file.buffer);
+        buffer = resized.buffer;
+      } catch (e) {
+        return res.status(400).json({ success: false, error: 'Invalid or unsupported image. Use JPEG or PNG.' });
+      }
+      const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.jpg`;
+      const { cdnUrl } = await BunnyService.upload(buffer, fileName, 'ads');
       ad.imageUrl = cdnUrl;
     }
     if (req.body.link !== undefined) ad.link = String(req.body.link).trim();
