@@ -18,8 +18,8 @@ const {
   getUsersWithDocuments,
   updateUser,
   softDeleteUser,
-  getUserStatistics
 } = require('./data-helpers');
+const { getPlatformAnalytics } = require('./analytics-helpers');
 
 const {
   sendNotification,
@@ -316,10 +316,10 @@ app.get('/api/users/with-documents', async (req, res) => {
   }
 });
 
-// Get user statistics
+// Platform analytics (TAU, MAU/WAU/DAU, activation, posts, groups, likes, comments — no documents)
 app.get('/api/statistics', async (req, res) => {
   try {
-    const stats = await getUserStatistics();
+    const stats = await getPlatformAnalytics();
     res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Error in GET /api/statistics:', error);

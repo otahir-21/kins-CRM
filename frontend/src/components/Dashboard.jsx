@@ -3,9 +3,7 @@ import {
   Users, 
   UserCheck, 
   FileText, 
-  TrendingUp,
   UserPlus,
-  FileCheck
 } from 'lucide-react';
 import {
   LineChart,
@@ -38,92 +36,61 @@ const Dashboard = () => {
       setStats(response.data.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
-      // Use dummy data if API fails
-      setStats({
-        totalUsers: 150,
-        usersByGender: {
-          male: 85,
-          female: 60,
-          other: 5,
-          unknown: 0
-        },
-        usersWithDocuments: 120,
-        usersWithoutDocuments: 30
-      });
+      setStats(null);
     } finally {
       setLoading(false);
     }
   };
 
   // Dummy data for charts
+  const totalUsers = stats?.totalRegisteredUsers ?? stats?.totalUsers ?? 0;
   const userGrowthData = [
-    { month: 'Jan', users: 45 },
-    { month: 'Feb', users: 52 },
-    { month: 'Mar', users: 68 },
-    { month: 'Apr', users: 75 },
-    { month: 'May', users: 88 },
-    { month: 'Jun', users: 95 },
-    { month: 'Jul', users: 110 },
-    { month: 'Aug', users: 125 },
-    { month: 'Sep', users: 135 },
-    { month: 'Oct', users: 142 },
-    { month: 'Nov', users: 148 },
-    { month: 'Dec', users: stats?.totalUsers || 150 },
+    { month: 'Jan', users: Math.round(totalUsers * 0.3) },
+    { month: 'Feb', users: Math.round(totalUsers * 0.35) },
+    { month: 'Mar', users: Math.round(totalUsers * 0.45) },
+    { month: 'Apr', users: Math.round(totalUsers * 0.5) },
+    { month: 'May', users: Math.round(totalUsers * 0.6) },
+    { month: 'Jun', users: Math.round(totalUsers * 0.65) },
+    { month: 'Jul', users: Math.round(totalUsers * 0.75) },
+    { month: 'Aug', users: Math.round(totalUsers * 0.85) },
+    { month: 'Sep', users: Math.round(totalUsers * 0.9) },
+    { month: 'Oct', users: Math.round(totalUsers * 0.95) },
+    { month: 'Nov', users: Math.round(totalUsers * 0.98) },
+    { month: 'Dec', users: totalUsers },
   ];
 
-  const documentUploadData = [
-    { month: 'Jan', uploads: 12 },
-    { month: 'Feb', uploads: 18 },
-    { month: 'Mar', uploads: 25 },
-    { month: 'Apr', uploads: 30 },
-    { month: 'May', uploads: 35 },
-    { month: 'Jun', uploads: 42 },
-    { month: 'Jul', uploads: 48 },
-    { month: 'Aug', uploads: 55 },
-    { month: 'Sep', uploads: 62 },
-    { month: 'Oct', uploads: 68 },
-    { month: 'Nov', uploads: 75 },
-    { month: 'Dec', uploads: 82 },
-  ];
-
-  const genderData = stats?.usersByGender ? [
-    { name: 'Male', value: stats.usersByGender.male, color: '#0ea5e9' },
-    { name: 'Female', value: stats.usersByGender.female, color: '#ec4899' },
-    { name: 'Other', value: stats.usersByGender.other, color: '#8b5cf6' },
-  ] : [
-    { name: 'Male', value: 85, color: '#0ea5e9' },
-    { name: 'Female', value: 60, color: '#ec4899' },
-    { name: 'Other', value: 5, color: '#8b5cf6' },
-  ];
+  const g = stats?.usersByGender || {};
+  const genderData = [
+    { name: 'Male', value: g.male ?? 0, color: '#0ea5e9' },
+    { name: 'Female', value: g.female ?? 0, color: '#ec4899' },
+    { name: 'Other', value: g.other ?? 0, color: '#8b5cf6' },
+    { name: 'Unknown', value: g.unknown ?? 0, color: '#94a3b8' },
+  ].filter((d) => d.value > 0);
 
   const statCards = [
     {
-      title: 'Total Users',
-      value: stats?.totalUsers || 150,
+      title: 'Total Registered (TAU)',
+      value: stats?.totalRegisteredUsers ?? stats?.totalUsers ?? 0,
       icon: Users,
       color: 'bg-blue-500',
-      change: '+12%',
     },
     {
-      title: 'Users with Documents',
-      value: stats?.usersWithDocuments || 120,
-      icon: FileCheck,
-      color: 'bg-green-500',
-      change: '+8%',
-    },
-    {
-      title: 'Active Users',
-      value: stats?.usersWithDocuments || 120,
+      title: 'Monthly Active (MAU)',
+      value: stats?.monthlyActiveUsers ?? 0,
       icon: UserCheck,
-      color: 'bg-purple-500',
-      change: '+15%',
+      color: 'bg-green-500',
     },
     {
-      title: 'New This Month',
-      value: 12,
+      title: 'New Posts (Month)',
+      value: stats?.newPosts?.monthly ?? 0,
+      icon: FileText,
+      color: 'bg-purple-500',
+    },
+    {
+      title: 'New Groups (Month)',
+      value: stats?.newGroups?.monthly ?? 0,
       icon: UserPlus,
       color: 'bg-orange-500',
-      change: '+5%',
     },
   ];
 
@@ -152,10 +119,6 @@ const Dashboard = () => {
                 <div>
                   <p className="text-gray-600 text-sm font-medium">{card.title}</p>
                   <p className="text-3xl font-bold text-gray-800 mt-2">{card.value}</p>
-                  <p className="text-green-600 text-sm mt-2 flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-1" />
-                    {card.change} from last month
-                  </p>
                 </div>
                 <div className={`${card.color} p-4 rounded-lg`}>
                   <Icon className="w-8 h-8 text-white" />
@@ -189,19 +152,23 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Document Uploads Chart */}
+        {/* Active users snapshot */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Document Uploads</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={documentUploadData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="uploads" fill="#10b981" name="Uploads" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Active users (snapshot)</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-2xl font-bold text-gray-800">{stats?.monthlyActiveUsers ?? 0}</p>
+              <p className="text-sm text-gray-600">MAU</p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-2xl font-bold text-gray-800">{stats?.weeklyActiveUsers ?? 0}</p>
+              <p className="text-sm text-gray-600">WAU</p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <p className="text-2xl font-bold text-gray-800">{stats?.dailyActiveUsers ?? 0}</p>
+              <p className="text-sm text-gray-600">DAU</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -240,7 +207,7 @@ const Dashboard = () => {
                   <p className="text-gray-600 text-sm">{item.value} users</p>
                 </div>
                 <p className="text-2xl font-bold text-gray-800">
-                  {((item.value / (stats?.totalUsers || 150)) * 100).toFixed(1)}%
+                  {totalUsers > 0 ? ((item.value / totalUsers) * 100).toFixed(1) : 0}%
                 </p>
               </div>
             ))}
