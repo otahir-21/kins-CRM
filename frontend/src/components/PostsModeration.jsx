@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FileText, Trash2, User, Image, AlertTriangle, Loader, ChevronDown } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { FileText, Trash2, User, AlertTriangle, Loader, ChevronDown, Search, Flag } from 'lucide-react';
 import { apiService } from '../utils/api';
 import { formatFirestoreDateTime } from '../utils/dateHelpers';
 
@@ -11,10 +11,13 @@ const PostsModeration = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextPageToken, setNextPageToken] = useState(null);
   const [hasMore, setHasMore] = useState(false);
-  const [filter, setFilter] = useState('active'); // active | reported | deleted
+  const [filter, setFilter] = useState('active'); // active | reported | deleted | flagged
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // controlled input; submit on Enter or button
   const [error, setError] = useState(null);
 
-  const loadPosts = async (append = false) => {
+  const loadPosts = useCallback(async (append = false, cursor = null) => {
+    const startAfter = append ? (cursor ?? nextPageToken) : undefined;
     if (append) {
       setLoadingMore(true);
     } else {
@@ -25,10 +28,18 @@ const PostsModeration = () => {
     setError(null);
 
     try {
-      if (filter === 'reported') {
+      if (filter === 'flagged') {
+        const res = await apiService.getFlaggedPosts({
+          limit: PAGE_SIZE,
+          startAfter,
+        });
+        setPosts(append ? (p) => [...p, ...(res.data.data || [])] : res.data.data || []);
+        setNextPageToken(res.data.nextPageToken || null);
+        setHasMore(!!res.data.hasMore);
+      } else if (filter === 'reported') {
         const res = await apiService.getReportedPosts({
           limit: PAGE_SIZE,
-          startAfter: append ? nextPageToken : undefined,
+          startAfter,
         });
         setPosts(append ? (p) => [...p, ...(res.data.data || [])] : res.data.data || []);
         setNextPageToken(res.data.nextPageToken || null);
@@ -36,8 +47,9 @@ const PostsModeration = () => {
       } else {
         const res = await apiService.getPosts({
           limit: PAGE_SIZE,
-          startAfter: append ? nextPageToken : undefined,
+          startAfter,
           status: filter,
+          q: searchQuery || undefined,
         });
         setPosts(append ? (p) => [...p, ...(res.data.data || [])] : res.data.data || []);
         setNextPageToken(res.data.nextPageToken || null);
@@ -50,11 +62,15 @@ const PostsModeration = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [filter, searchQuery]);
 
   useEffect(() => {
     loadPosts();
-  }, [filter]);
+  }, [filter, searchQuery]);
+
+  const handleSearch = () => {
+    setSearchQuery(searchInput.trim());
+  };
 
   const handleDelete = async (postId) => {
     if (!confirm('Delete this post? It will be hidden from the feed.')) return;
@@ -82,8 +98,35 @@ const PostsModeration = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Posts Moderation</h1>
         <p className="text-gray-600 mt-2">
-          Review and remove inappropriate posts. Only {PAGE_SIZE} posts load per page to reduce cost.
+          Search for bad terms, review flagged and reported posts. Only {PAGE_SIZE} posts load per page.
         </p>
+      </div>
+
+      {/* Search bar — applies to Active / Deleted tabs */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search posts by keyword (e.g. abusive terms)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleSearch}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          Search
+        </button>
+        {searchQuery && (
+          <span className="text-sm text-gray-500">
+            Showing results for &quot;{searchQuery}&quot;
+          </span>
+        )}
       </div>
 
       {/* Tabs */}
@@ -91,6 +134,7 @@ const PostsModeration = () => {
         {[
           { key: 'active', label: 'Active Posts' },
           { key: 'reported', label: 'Reported' },
+          { key: 'flagged', label: 'Flagged (48 keywords)' },
           { key: 'deleted', label: 'Deleted' },
         ].map((tab) => (
           <button
@@ -125,7 +169,11 @@ const PostsModeration = () => {
           <p className="text-gray-500 text-sm mt-2">
             {filter === 'reported'
               ? 'No reported posts. If your app adds reportCount to posts, they will appear here.'
-              : 'Posts from your app will appear here once the posts collection exists in Firestore.'}
+              : filter === 'flagged'
+                ? 'No posts contain any of the 48 moderation keywords. Edit config/moderationKeywords.js to set your list.'
+                : searchQuery
+                  ? 'No posts match your search. Try a different term.'
+                  : 'Posts from your app will appear here once the posts collection exists in Firestore.'}
           </p>
         </div>
       ) : (
@@ -145,6 +193,12 @@ const PostsModeration = () => {
                     {post.reportCount > 0 && (
                       <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
                         {post.reportCount} report{post.reportCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {filter === 'flagged' && Array.isArray(post.matchedKeywords) && post.matchedKeywords.length > 0 && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full flex items-center gap-1">
+                        <Flag className="w-3 h-3" />
+                        {post.matchedKeywords.join(', ')}
                       </span>
                     )}
                   </div>
@@ -170,7 +224,7 @@ const PostsModeration = () => {
                       />
                     </a>
                   )}
-                  {(filter === 'active' || filter === 'reported') && (
+                  {(filter === 'active' || filter === 'reported' || filter === 'flagged') && (
                     <button
                       onClick={() => handleDelete(post.id)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -187,7 +241,7 @@ const PostsModeration = () => {
           {hasMore && (
             <div className="mt-6 flex justify-center">
               <button
-                onClick={() => loadPosts(true)}
+                onClick={() => loadPosts(true, nextPageToken)}
                 disabled={loadingMore}
                 className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
               >

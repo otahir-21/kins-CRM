@@ -50,7 +50,8 @@ const {
   getPostById,
   deletePost,
   hardDeletePost,
-  getReportedPostsPaginated
+  getReportedPostsPaginated,
+  getFlaggedPostsPaginated
 } = require('./posts-helpers');
 
 const {
@@ -642,14 +643,15 @@ app.delete('/api/users/:userId', async (req, res) => {
 
 // ==================== POSTS MODERATION ====================
 
-// Get posts (paginated - cost effective)
+// Get posts (paginated - cost effective). Optional q = search in content.
 app.get('/api/posts', async (req, res) => {
   try {
-    const { limit = 20, startAfter, status = 'active' } = req.query;
+    const { limit = 20, startAfter, status = 'active', q } = req.query;
     const result = await getPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
       status,
+      q: q || '',
     });
     res.json({
       success: true,
@@ -679,6 +681,26 @@ app.get('/api/posts/reported', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in GET /api/posts/reported:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get posts flagged by moderation keywords (paginated)
+app.get('/api/posts/flagged', async (req, res) => {
+  try {
+    const { limit = 20, startAfter } = req.query;
+    const result = await getFlaggedPostsPaginated({
+      limit: Math.min(parseInt(limit) || 20, 50),
+      startAfterDocId: startAfter || null,
+    });
+    res.json({
+      success: true,
+      data: result.posts,
+      nextPageToken: result.nextPageToken,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/posts/flagged:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

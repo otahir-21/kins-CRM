@@ -209,14 +209,20 @@ export const apiService = {
     if (params.limit) searchParams.append('limit', params.limit);
     if (params.startAfter) searchParams.append('startAfter', params.startAfter);
     if (params.status) searchParams.append('status', params.status);
+    if (params.q && String(params.q).trim()) searchParams.append('q', String(params.q).trim());
     return api.get(`/api/posts?${searchParams.toString()}`);
   },
-  
   getReportedPosts: (params = {}) => {
     const searchParams = new URLSearchParams();
     if (params.limit) searchParams.append('limit', params.limit);
     if (params.startAfter) searchParams.append('startAfter', params.startAfter);
     return api.get(`/api/posts/reported?${searchParams.toString()}`);
+  },
+  getFlaggedPosts: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.append('limit', params.limit);
+    if (params.startAfter) searchParams.append('startAfter', params.startAfter);
+    return api.get(`/api/posts/flagged?${searchParams.toString()}`);
   },
   
   getPostById: (postId) => {
