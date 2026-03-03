@@ -154,9 +154,9 @@ const PostsModeration = () => {
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Posts Moderation</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Content Moderation</h1>
         <p className="text-gray-600 mt-2">
-          Search for bad terms, review flagged and reported posts. Only {PAGE_SIZE} posts load per page.
+          Search for bad terms, review flagged and reported content. Only {PAGE_SIZE} posts load per page.
         </p>
       </div>
 

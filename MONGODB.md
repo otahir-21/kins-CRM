@@ -11,7 +11,7 @@ brew services start mongodb-community
 
 **In `.env`:**
 ```
-MONGODB_URI=mongodb://localhost:27017/kins-crm
+MONGODB_URI=mongodb://localhost:27017/kindash
 ```
 
 No username/password. Restart the server after changing `.env`.
@@ -27,7 +27,7 @@ No username/password. Restart the server after changing `.env`.
 
 **In `.env`:**
 ```
-MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/kins-crm?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@CLUSTER.mongodb.net/kindash?retryWrites=true&w=majority
 ```
 
 Replace `USERNAME`, `PASSWORD`, and `CLUSTER` with your values. If the password has special characters, URL-encode them (e.g. `@` → `%40`).

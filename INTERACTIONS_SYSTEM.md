@@ -58,7 +58,7 @@ All counters are **updated atomically** using MongoDB `$inc` operator.
 
 ## API Endpoints
 
-**Base URL:** `https://kins-crm.vercel.app/api/v1`
+**Base URL:** `https://kindash.vercel.app/api/v1`
 
 ### Likes
 

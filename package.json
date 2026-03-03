@@ -1,7 +1,7 @@
 {
-  "name": "kins-crm",
+  "name": "kindash",
   "version": "1.0.0",
-  "description": "CRM Integration API for KINS App - MongoDB backend",
+  "description": "Kindash CRM – API for KINS app (MongoDB backend)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

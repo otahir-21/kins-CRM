@@ -113,4 +113,4 @@ None of this requires a full rewrite; the current modular monolith can be scaled
 
 ---
 
-*Backend Q&A based on current KINS CRM codebase. Frontend Q&A is separate.*
+*Backend Q&A based on current Kindash codebase. Frontend Q&A is separate.*

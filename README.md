@@ -1,4 +1,4 @@
-# KINS CRM System
+# Kindash
 
 A comprehensive Customer Relationship Management (CRM) system for managing KINS mobile app users, built with Node.js backend and React frontend.
 

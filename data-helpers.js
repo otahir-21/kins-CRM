@@ -10,14 +10,14 @@ function toUserDoc(user) {
   return {
     id: u._id.toString(),
     providerUserId: u.providerUserId ?? null,
-    name: u.name ?? null,
+    name: (u.name != null && u.name !== '') ? u.name : (u.username != null && u.username !== '') ? u.username : null,
     email: u.email ?? null,
     phoneNumber: u.phoneNumber ?? null,
     gender: u.gender ?? null,
     documentUrl: u.documentUrl ?? null,
     interests: (u.interests || []).map((i) => (i && i.toString ? i.toString() : String(i))),
-    createdAt: u.createdAt,
-    updatedAt: u.updatedAt,
+    createdAt: u.createdAt ?? null,
+    updatedAt: u.updatedAt ?? null,
     deletedAt: u.deletedAt ?? null,
   };
 }
@@ -87,10 +87,23 @@ async function getUserDocuments(userId) {
   return [{ id: 'doc1', url: user.documentUrl, type: 'document' }];
 }
 
+/**
+ * Returns a flat user object for CRM so name, gender, createdAt, etc. are at top level.
+ * auth.creationTime and auth.lastSignInTime use MongoDB createdAt/updatedAt (we don't track last sign-in separately).
+ */
 async function getCompleteUserProfile(userId) {
-  const user = await getUserWithAuthData(userId);
+  const user = await getUserById(userId);
+  if (!user) return null;
   const documents = await getUserDocuments(userId);
-  return { ...user, documents };
+  return {
+    ...user,
+    documents,
+    auth: {
+      phoneNumber: user.phoneNumber,
+      creationTime: user.createdAt,
+      lastSignInTime: user.updatedAt,
+    },
+  };
 }
 
 async function getAllUsersComplete() {

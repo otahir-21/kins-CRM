@@ -7,13 +7,13 @@ Auth via **Firebase ID token** only. User profile and interests stored in **Mong
 ## Base URL
 
 - Local: `http://localhost:3000`
-- Production: `https://kins-crm.vercel.app`
+- Production: `https://kindash.vercel.app`
 
 ---
 
 ## Environment
 
-- **MONGODB_URI** — MongoDB connection string (e.g. `mongodb://localhost:27017/kins-crm` or Atlas URI).
+- **MONGODB_URI** — MongoDB connection string (e.g. `mongodb://localhost:27017/kindash` or Atlas URI).
 - **FIREBASE_SERVICE_ACCOUNT** (or service account key file) — for verifying Firebase ID tokens.
 
 ---
@@ -258,7 +258,7 @@ List interests selected by current user (auth required).
 ## Frontend example (fetch)
 
 ```javascript
-const BASE = 'https://kins-crm.vercel.app';
+const BASE = 'https://kindash.vercel.app';
 
 // After Firebase sign-in, get ID token (e.g. from firebase.auth().currentUser.getIdToken())
 const idToken = await firebase.auth().currentUser.getIdToken();

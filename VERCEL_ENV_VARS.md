@@ -8,7 +8,7 @@
 
 | Variable | Example / notes |
 |----------|------------------|
-| **MONGODB_URI** | Atlas: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/kins-crm?retryWrites=true&w=majority&appName=Kins`. Must include database name in path. |
+| **MONGODB_URI** | Atlas: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/kindash?retryWrites=true&w=majority&appName=Kins`. Must include database name in path. |
 | **JWT_SECRET** | Long random string, **at least 32 characters** (e.g. `openssl rand -base64 32`). |
 
 ---

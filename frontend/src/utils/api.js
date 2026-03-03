@@ -74,9 +74,11 @@ export const apiService = {
   updateCategory: (categoryId, data) => api.put(`/api/interests/categories/${categoryId}`, data),
   deleteCategory: (categoryId) => api.delete(`/api/interests/categories/${categoryId}`),
   
-  // User Interests
+  // User Interests (query-param endpoint to avoid 404)
   getUserInterests: (userId, details = false) => {
-    return api.get(`/api/users/${userId}/interests${details ? '?details=true' : ''}`);
+    const params = new URLSearchParams({ userId });
+    if (details) params.set('details', 'true');
+    return api.get(`/api/user-interests?${params.toString()}`);
   },
   
   addUserInterest: (userId, interestId) => {
@@ -109,6 +111,16 @@ export const apiService = {
   
   getNotificationStats: (userId) => {
     return api.get(`/api/users/${userId}/notifications/stats`);
+  },
+
+  // Posts for a specific user only (user detail page; CRM path to avoid 404)
+  getUserPosts: (userId, params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.append('limit', params.limit);
+    if (params.startAfter) searchParams.append('startAfter', params.startAfter);
+    if (params.status) searchParams.append('status', params.status);
+    const qs = searchParams.toString();
+    return api.get(`/api/crm/user/${userId}/posts${qs ? `?${qs}` : ''}`);
   },
   
   markNotificationAsRead: (userId, notificationId) => {
@@ -210,6 +222,7 @@ export const apiService = {
     if (params.startAfter) searchParams.append('startAfter', params.startAfter);
     if (params.status) searchParams.append('status', params.status);
     if (params.q && String(params.q).trim()) searchParams.append('q', String(params.q).trim());
+    if (params.userId) searchParams.append('userId', params.userId);
     return api.get(`/api/posts?${searchParams.toString()}`);
   },
   getReportedPosts: (params = {}) => {

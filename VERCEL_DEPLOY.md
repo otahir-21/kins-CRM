@@ -1,4 +1,4 @@
-# Deploy Kins-CRM to Vercel
+# Deploy Kindash to Vercel
 
 No code changes needed — push your repo and set environment variables.
 
@@ -7,7 +7,7 @@ No code changes needed — push your repo and set environment variables.
 ## 1. Connect repo (if not already)
 
 1. Go to [vercel.com](https://vercel.com) → **Add New** → **Project**.
-2. Import your **Kins-CRM** GitHub repo.
+2. Import your **Kindash** GitHub repo.
 3. Vercel will use **Root Directory**: `.` and detect the build from `vercel.json`.
 
 ---
@@ -30,7 +30,7 @@ In Vercel: **Project → Settings → Environment Variables**. Add:
 
 | Variable       | Required | Example / notes |
 |----------------|----------|------------------|
-| **MONGODB_URI** | ✅ Yes   | Your Atlas connection string. Must include the **database name** in the path, e.g. `mongodb+srv://user:pass@cluster.mongodb.net/kins-crm?retryWrites=true&w=majority&appName=Kins` |
+| **MONGODB_URI** | ✅ Yes   | Your Atlas connection string. Must include the **database name** in the path, e.g. `mongodb+srv://user:pass@cluster.mongodb.net/kindash?retryWrites=true&w=majority&appName=Kins` |
 | **JWT_SECRET**  | ✅ Yes   | Long random string, **at least 32 characters** (e.g. `openssl rand -base64 32`). Used for login tokens and API v1. |
 
 For each variable:

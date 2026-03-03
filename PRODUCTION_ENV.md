@@ -1,6 +1,6 @@
 # Production environment variables (final reference)
 
-Single reference for all environment variables used by KINS CRM in production.
+Single reference for all environment variables used by Kindash in production.
 
 ---
 
@@ -8,7 +8,7 @@ Single reference for all environment variables used by KINS CRM in production.
 
 | Variable | Required | Where to get it | Format / notes |
 |----------|----------|-----------------|----------------|
-| **MONGODB_URI** | ✅ | MongoDB Atlas (or your cluster): Connect → Drivers → Node.js. Replace `<password>` and set database name in path (e.g. `/kins` or `/kins-crm`). | `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/DATABASE?retryWrites=true&w=majority&appName=Kins` |
+| **MONGODB_URI** | ✅ | MongoDB Atlas (or your cluster): Connect → Drivers → Node.js. Replace `<password>` and set database name in path (e.g. `/kins` or `/kindash`). | `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/DATABASE?retryWrites=true&w=majority&appName=Kins` |
 | **JWT_SECRET** | ✅ | Generate: `openssl rand -base64 32`. Used to sign login tokens and API v1. | Min 32 characters. Never commit. |
 | **JWT_EXPIRES_IN** | ✅ | Your choice. | e.g. `7d`, `24h`. Default in code: `7d`. |
 | **NODE_ENV** | ✅ | Set on host. | `production` |

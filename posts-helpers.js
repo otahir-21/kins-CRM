@@ -19,7 +19,26 @@ async function getModerationKeywords() {
   return Array.isArray(DEFAULT_MODERATION_KEYWORDS) ? DEFAULT_MODERATION_KEYWORDS : [];
 }
 
-const isValidId = (id) => id && mongoose.Types.ObjectId.isValid(id);
+const isValidId = (id) => {
+  if (id == null) return false;
+  const s = String(id).trim();
+  return s.length === 24 && /^[a-fA-F0-9]{24}$/.test(s) && mongoose.Types.ObjectId.isValid(s);
+};
+
+/** Return a valid ObjectId for filter, or null. Use for userId so we never skip the filter for a valid-looking id. */
+function toObjectIdOrNull(id) {
+  if (id == null) return null;
+  const s = String(id).trim();
+  if (!s) return null;
+  if (mongoose.Types.ObjectId.isValid(s)) {
+    try {
+      return new mongoose.Types.ObjectId(s);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 function escapeRegex(str) {
   if (!str || typeof str !== 'string') return '';
@@ -53,17 +72,20 @@ function toCRMPost(doc) {
 
 /**
  * Get posts paginated for CRM. status: 'active' | 'deleted'
- * options: { limit, startAfterDocId, status, q } — q = search in content (optional)
+ * options: { limit, startAfterDocId, status, q, userId } — userId = filter by author (optional)
  */
 async function getPostsPaginated(options = {}) {
   const limit = Math.min(parseInt(options.limit) || 20, 50);
   const status = options.status || 'active';
   const startAfterDocId = options.startAfterDocId || null;
   const q = (options.q || '').trim();
+  const userId = options.userId || null;
 
   const filter = {};
   if (status === 'active') filter.isActive = true;
   else if (status === 'deleted') filter.isActive = false;
+  const userIdObj = toObjectIdOrNull(userId);
+  if (userIdObj) filter.userId = userIdObj;
   if (q.length > 0) {
     filter.content = { $regex: escapeRegex(q), $options: 'i' };
   }

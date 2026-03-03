@@ -4,7 +4,6 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Users from './components/Users';
 import UserDetail from './components/UserDetail';
-import Documents from './components/Documents';
 import Interests from './components/Interests';
 import Surveys from './components/Surveys';
 import SurveyAnalytics from './components/SurveyAnalytics';
@@ -21,7 +20,7 @@ import Ads from './components/Ads';
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/splash" element={<SplashScreen />} />
         <Route path="/login" element={<Login />} />
@@ -36,7 +35,6 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/users/:userId" element={<UserDetail />} />
           <Route path="/users/:userId/notifications" element={<Notifications />} />
-          <Route path="/documents" element={<Documents />} />
           <Route path="/interests" element={<Interests />} />
           <Route path="/surveys" element={<Surveys />} />
           <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />

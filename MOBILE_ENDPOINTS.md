@@ -1,6 +1,6 @@
 # Cursor Mobile App - API Endpoints
 
-**Production Base URL:** `https://kins-crm.vercel.app/api/v1`
+**Production Base URL:** `https://kindash.vercel.app/api/v1`
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Login/Register
 ```
-POST https://kins-crm.vercel.app/api/v1/auth/login
+POST https://kindash.vercel.app/api/v1/auth/login
 ```
 
 **Body:**
@@ -31,12 +31,12 @@ POST https://kins-crm.vercel.app/api/v1/auth/login
 
 ### Get My Profile
 ```
-GET https://kins-crm.vercel.app/api/v1/me
+GET https://kindash.vercel.app/api/v1/me
 ```
 
 ### Update Profile (About You)
 ```
-PUT https://kins-crm.vercel.app/api/v1/me/about
+PUT https://kindash.vercel.app/api/v1/me/about
 ```
 
 **Body:**
@@ -55,7 +55,7 @@ PUT https://kins-crm.vercel.app/api/v1/me/about
 
 ### Delete Account
 ```
-DELETE https://kins-crm.vercel.app/api/v1/me
+DELETE https://kindash.vercel.app/api/v1/me
 ```
 
 ---
@@ -64,17 +64,17 @@ DELETE https://kins-crm.vercel.app/api/v1/me
 
 ### Get Master Interest List (Public)
 ```
-GET https://kins-crm.vercel.app/api/v1/interests
+GET https://kindash.vercel.app/api/v1/interests
 ```
 
 ### Get My Interests
 ```
-GET https://kins-crm.vercel.app/api/v1/me/interests
+GET https://kindash.vercel.app/api/v1/me/interests
 ```
 
 ### Set My Interests
 ```
-POST https://kins-crm.vercel.app/api/v1/me/interests
+POST https://kindash.vercel.app/api/v1/me/interests
 ```
 
 **Body:**
@@ -90,7 +90,7 @@ POST https://kins-crm.vercel.app/api/v1/me/interests
 
 ### Create Post
 ```
-POST https://kins-crm.vercel.app/api/v1/posts
+POST https://kindash.vercel.app/api/v1/posts
 ```
 
 **For Text Post (JSON):**
@@ -131,12 +131,12 @@ media: [file1, file2] (multipart files)
 
 ### Get Single Post
 ```
-GET https://kins-crm.vercel.app/api/v1/posts/{postId}
+GET https://kindash.vercel.app/api/v1/posts/{postId}
 ```
 
 ### Delete Post
 ```
-DELETE https://kins-crm.vercel.app/api/v1/posts/{postId}
+DELETE https://kindash.vercel.app/api/v1/posts/{postId}
 ```
 *(Only post author can delete)*
 
@@ -146,7 +146,7 @@ DELETE https://kins-crm.vercel.app/api/v1/posts/{postId}
 
 ### Get Personalized Feed
 ```
-GET https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
+GET https://kindash.vercel.app/api/v1/feed?page=1&limit=20
 ```
 
 **Query Parameters:**
@@ -155,8 +155,8 @@ GET https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
 
 **Example:**
 ```
-https://kins-crm.vercel.app/api/v1/feed?page=1&limit=20
-https://kins-crm.vercel.app/api/v1/feed?page=2&limit=10
+https://kindash.vercel.app/api/v1/feed?page=1&limit=20
+https://kindash.vercel.app/api/v1/feed?page=2&limit=10
 ```
 
 **Returns:**
@@ -236,7 +236,7 @@ The JWT token is returned from the login endpoint in the `token` field.
 
 ### 1. Initial Setup
 ```dart
-final String baseUrl = 'https://kins-crm.vercel.app/api/v1';
+final String baseUrl = 'https://kindash.vercel.app/api/v1';
 ```
 
 ### 2. Login Flow
@@ -365,4 +365,4 @@ For issues or questions:
 
 **Last Updated:** February 11, 2026  
 **API Version:** v1  
-**Base URL:** `https://kins-crm.vercel.app/api/v1`
+**Base URL:** `https://kindash.vercel.app/api/v1`

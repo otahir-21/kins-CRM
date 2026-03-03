@@ -18,6 +18,7 @@ const {
   getUsersWithDocuments,
   updateUser,
   softDeleteUser,
+  getUserInterests: getUserInterestsIds,
 } = require('./data-helpers');
 const { getPlatformAnalytics } = require('./analytics-helpers');
 
@@ -129,7 +130,7 @@ app.get('/api-info', (req, res) => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   res.json({
     success: true,
-    service: 'KINS CRM API',
+    service: 'Kindash API',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -221,8 +222,84 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'KINS CRM API'
+    service: 'Kindash API'
   });
+});
+
+// CRM: register first so they always match (avoid 404)
+app.get('/api/crm/ping', (req, res) => res.json({ ok: true, crm: true }));
+
+// User interests by query param (avoids /api/users/:id/... route issues)
+app.get('/api/user-interests', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    const details = req.query.details === 'true';
+    if (!userId) return res.status(400).json({ success: false, error: 'userId query required' });
+    const ids = await getUserInterestsIds(userId);
+    const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
+    if (!details || idList.length === 0) {
+      return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
+    }
+    const mongoose = require('mongoose');
+    const objectIds = idList
+      .filter((id) => id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id) && mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const Interest = require('./models/Interest');
+    const interests = objectIds.length > 0 ? await Interest.find({ _id: { $in: objectIds } }).lean() : [];
+    const nameById = {};
+    interests.forEach((i) => { nameById[i._id.toString()] = i.name != null ? String(i.name).trim() : '(Unknown)'; });
+    const data = idList.map((id) => ({ id, name: nameById[id] || '(Unknown)' }));
+    res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    console.error('Error in GET /api/user-interests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+app.get('/api/crm/user/:userId/interests', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const details = req.query.details === 'true';
+    const ids = await getUserInterestsIds(userId);
+    const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
+    if (!details || idList.length === 0) {
+      return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
+    }
+    const mongoose = require('mongoose');
+    const objectIds = idList
+      .filter((id) => id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id) && mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const Interest = require('./models/Interest');
+    const interests = objectIds.length > 0 ? await Interest.find({ _id: { $in: objectIds } }).lean() : [];
+    const nameById = {};
+    interests.forEach((i) => { nameById[i._id.toString()] = i.name != null ? String(i.name).trim() : '(Unknown)'; });
+    const data = idList.map((id) => ({ id, name: nameById[id] || '(Unknown)' }));
+    res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    console.error('Error in GET /api/crm/user/:userId/interests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+app.get('/api/crm/user/:userId/posts', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 20, startAfter, status = 'active' } = req.query;
+    const result = await getPostsPaginated({
+      limit: Math.min(parseInt(limit) || 20, 50),
+      startAfterDocId: startAfter || null,
+      status: status || 'active',
+      q: '',
+      userId: typeof userId === 'string' ? userId.trim() : null,
+    });
+    res.json({
+      success: true,
+      data: result.posts,
+      nextPageToken: result.nextPageToken,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/crm/user/:userId/posts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Get all users (basic)
@@ -232,6 +309,20 @@ app.get('/api/users', async (req, res) => {
     
     if (complete === 'true') {
       const users = await getAllUsersComplete();
+      const Post = require('./models/Post');
+      const counts = await Post.aggregate([
+        { $match: { isActive: true } },
+        { $group: { _id: '$userId', count: { $sum: 1 } } },
+      ]);
+      const countMap = {};
+      counts.forEach((c) => {
+        const key = c._id != null ? String(c._id) : '';
+        if (key) countMap[key] = c.count;
+      });
+      users.forEach((u) => {
+        const id = u.id != null ? String(u.id).trim() : '';
+        u.postsCount = id ? (countMap[id] ?? 0) : 0;
+      });
       return res.json({ success: true, count: users.length, data: users });
     }
     
@@ -243,34 +334,10 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Get user by ID
-app.get('/api/users/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { complete } = req.query;
-    
-    if (complete === 'true') {
-      const user = await getCompleteUserProfile(userId);
-      if (!user.firestore && !user.auth) {
-        return res.status(404).json({ success: false, error: 'User not found' });
-      }
-      return res.json({ success: true, data: user });
-    }
-    
-    const user = await getUserById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    res.json({ success: true, data: user });
-  } catch (error) {
-    console.error('Error in GET /api/users/:userId:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// CRM: user detail sub-routes via Router so /api/users/:userId/posts and /interests match reliably
+const userDetailRouter = express.Router({ mergeParams: true });
 
-// Get user documents
-app.get('/api/users/:userId/documents', async (req, res) => {
+userDetailRouter.get('/documents', async (req, res) => {
   try {
     const { userId } = req.params;
     const documents = await getUserDocuments(userId);
@@ -280,6 +347,75 @@ app.get('/api/users/:userId/documents', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+userDetailRouter.get('/interests', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const details = req.query.details === 'true';
+    const ids = await getUserInterestsIds(userId);
+    const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
+    if (!details || idList.length === 0) {
+      return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
+    }
+    const mongoose = require('mongoose');
+    const objectIds = idList
+      .filter((id) => id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id) && mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const Interest = require('./models/Interest');
+    const interests = objectIds.length > 0 ? await Interest.find({ _id: { $in: objectIds } }).lean() : [];
+    const nameById = {};
+    interests.forEach((i) => { nameById[i._id.toString()] = i.name != null ? String(i.name).trim() : '(Unknown)'; });
+    const data = idList.map((id) => ({ id, name: nameById[id] || '(Unknown)' }));
+    res.json({ success: true, count: data.length, data });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/interests:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+userDetailRouter.get('/posts', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 20, startAfter, status = 'active' } = req.query;
+    const result = await getPostsPaginated({
+      limit: Math.min(parseInt(limit) || 20, 50),
+      startAfterDocId: startAfter || null,
+      status: status || 'active',
+      q: '',
+      userId: typeof userId === 'string' ? userId.trim() : null,
+    });
+    res.json({
+      success: true,
+      data: result.posts,
+      nextPageToken: result.nextPageToken,
+      hasMore: result.hasMore,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/posts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get user by ID (generic) – on same router so /api/users/:userId with no subpath
+userDetailRouter.get('/', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { complete } = req.query;
+    if (complete === 'true') {
+      const user = await getCompleteUserProfile(userId);
+      if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+      return res.json({ success: true, data: user });
+    }
+    const user = await getUserById(userId);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, data: user });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.use('/api/users/:userId', userDetailRouter);
 
 // Search users by name
 app.get('/api/users/search/:term', async (req, res) => {
@@ -678,15 +814,17 @@ app.put('/api/moderation/keywords', async (req, res) => {
 
 // ==================== POSTS MODERATION ====================
 
-// Get posts (paginated - cost effective). Optional q = search in content.
+// Get posts (paginated - cost effective). Optional q = search in content. Pass userId to get only that user's posts.
 app.get('/api/posts', async (req, res) => {
   try {
-    const { limit = 20, startAfter, status = 'active', q } = req.query;
+    const { limit = 20, startAfter, status = 'active', q, userId: userIdRaw } = req.query;
+    const userIdStr = typeof userIdRaw === 'string' ? userIdRaw.trim() : Array.isArray(userIdRaw) ? String(userIdRaw[0] || '').trim() : null;
     const result = await getPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
       status,
       q: q || '',
+      userId: userIdStr || null,
     });
     res.json({
       success: true,
@@ -1185,8 +1323,9 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`🚀 KINS CRM API Server running on port ${PORT}`);
+    console.log(`🚀 Kindash API Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔧 CRM user detail: http://localhost:${PORT}/api/crm/ping (test), /api/crm/user/:userId/posts, /api/crm/user/:userId/interests`);
     console.log(`👥 Users API: http://localhost:${PORT}/api/users`);
     console.log(`📈 Statistics: http://localhost:${PORT}/api/statistics`);
   });

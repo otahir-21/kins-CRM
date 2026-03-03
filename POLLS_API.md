@@ -1,6 +1,6 @@
 # Polls API - Quick Reference
 
-**Base URL:** `https://kins-crm.vercel.app/api/v1`
+**Base URL:** `https://kindash.vercel.app/api/v1`
 
 All endpoints require: `Authorization: Bearer YOUR_JWT_TOKEN`
 
@@ -378,7 +378,7 @@ Hide who voted:
 
 ### Create Poll
 ```bash
-curl -X POST https://kins-crm.vercel.app/api/v1/posts \
+curl -X POST https://kindash.vercel.app/api/v1/posts \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -398,7 +398,7 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts \
 
 ### Vote on Poll
 ```bash
-curl -X POST https://kins-crm.vercel.app/api/v1/posts/POLL_POST_ID/vote \
+curl -X POST https://kindash.vercel.app/api/v1/posts/POLL_POST_ID/vote \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"optionIndex": 0}'
@@ -406,13 +406,13 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts/POLL_POST_ID/vote \
 
 ### Get Poll Results
 ```bash
-curl -X GET https://kins-crm.vercel.app/api/v1/posts/POLL_POST_ID/poll \
+curl -X GET https://kindash.vercel.app/api/v1/posts/POLL_POST_ID/poll \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ### Remove Vote
 ```bash
-curl -X DELETE https://kins-crm.vercel.app/api/v1/posts/POLL_POST_ID/vote \
+curl -X DELETE https://kindash.vercel.app/api/v1/posts/POLL_POST_ID/vote \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 

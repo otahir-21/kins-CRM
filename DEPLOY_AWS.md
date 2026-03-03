@@ -1,4 +1,4 @@
-# Deploy Kins-CRM to AWS
+# Deploy Kindash to AWS
 
 Run the backend (API) on AWS so you can use the auth API and the rest from a public URL.
 
@@ -64,7 +64,7 @@ Use **AWS Systems Manager → Parameter Store** (or Lambda environment config, o
 
 - **BUNNY_STORAGE_ZONE** — Bunny Storage zone name (if you use onboarding uploads).
 - **BUNNY_ACCESS_KEY** — Bunny API key.
-- **BUNNY_CDN_URL** — CDN host (e.g. `https://kins-crm.b-cdn.net`).
+- **BUNNY_CDN_URL** — CDN host (e.g. `https://kindash.b-cdn.net`).
 - **PORT** — Often auto-set by the host (e.g. `8080`); set only if needed.
 - **NODE_ENV** — `production` (recommended).
 
@@ -118,7 +118,7 @@ If the **same MongoDB (Atlas)** works on Vercel but on EC2 the CRM and app show 
 
 ### 1. **MONGODB_URI not set or wrong on EC2**
 
-On EC2 the app loads env from a **`.env`** file in the project root (or from system/PM2 env). If `MONGODB_URI` is missing, the code falls back to `mongodb://localhost:27017/kins-crm`. The app then talks to MongoDB on the EC2 instance (often empty or not running), not Atlas.
+On EC2 the app loads env from a **`.env`** file in the project root (or from system/PM2 env). If `MONGODB_URI` is missing, the code falls back to `mongodb://localhost:27017/kindash`. The app then talks to MongoDB on the EC2 instance (often empty or not running), not Atlas.
 
 **Fix:**
 

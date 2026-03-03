@@ -1,10 +1,10 @@
-# Postman – Kins CRM API
+# Postman – Kindash API
 
 ## Import collection
 
 1. Open Postman.
 2. **Import** → **File** → choose `Kins-CRM-API.postman_collection.json`.
-3. The collection **Kins CRM API** appears in the sidebar.
+3. The collection **Kindash API** appears in the sidebar.
 
 ## Variables (set once)
 
@@ -12,7 +12,7 @@ In the collection, click the collection name → **Variables**:
 
 | Variable   | Initial value                         | Current value |
 |-----------|---------------------------------------|----------------|
-| `baseUrl` | `https://kins-crm.vercel.app`         | Same or `http://localhost:3000` for local |
+| `baseUrl` | `https://kindash.vercel.app`         | Same or `http://localhost:3000` for local |
 | `token`   | *(empty)*                             | Filled automatically after **Login** |
 | `userId`  | *(empty)*                             | Filled automatically after **Login** (your user id) |
 | `postId`  | *(empty)*                             | Set to a post ID when testing posts/likes/comments |

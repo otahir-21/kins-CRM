@@ -1,6 +1,6 @@
-# KINS CRM Frontend
+# Kindash Frontend
 
-React-based frontend application for the KINS CRM system.
+React-based frontend application for the Kindash system.
 
 ## 🚀 Quick Start
 

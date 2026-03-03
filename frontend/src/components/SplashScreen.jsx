@@ -22,7 +22,7 @@ const SplashScreen = () => {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary-600 to-primary-800">
       <div className="text-center">
         <div className="mb-8">
-          <h1 className="text-6xl font-bold text-white mb-4">KINS</h1>
+          <h1 className="text-6xl font-bold text-white mb-4">Kindash</h1>
           <div className="w-24 h-1 bg-white mx-auto"></div>
         </div>
         <div className="flex justify-center space-x-2">

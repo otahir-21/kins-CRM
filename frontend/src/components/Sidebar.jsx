@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
-  FileText, 
   BarChart3, 
   Settings,
   LogOut,
@@ -28,11 +27,10 @@ const Sidebar = () => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/groups', icon: MessageCircle, label: 'Groups' },
-    { path: '/documents', icon: FileText, label: 'Documents' },
     { path: '/ads', icon: ImageIcon, label: 'Ads' },
     { path: '/interests', icon: Tag, label: 'Interests' },
     { path: '/surveys', icon: ClipboardList, label: 'Surveys' },
-    { path: '/posts-moderation', icon: ShieldCheck, label: 'Posts Moderation' },
+    { path: '/posts-moderation', icon: ShieldCheck, label: 'Content Moderation' },
     { path: '/onboarding', icon: BookOpen, label: 'Onboarding' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
@@ -41,7 +39,7 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
       <div className="p-6 border-b border-gray-800">
-        <h1 className="text-2xl font-bold">KINS CRM</h1>
+        <h1 className="text-2xl font-bold">Kindash</h1>
         <p className="text-gray-400 text-sm mt-1">Management System</p>
       </div>
 

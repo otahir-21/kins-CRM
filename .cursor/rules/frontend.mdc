@@ -4,7 +4,7 @@ globs: frontend/**/*
 alwaysApply: false
 ---
 
-# Kins-CRM frontend
+# Kindash frontend
 
 - **Run:** `cd frontend && npm install && npm run dev` → http://localhost:5173. Backend must run on port 3000; Vite proxies `/api` there.
 - **API base:** `frontend/src/utils/api.js` uses `VITE_API_URL` in prod; in dev same-origin + proxy. For **app features** use `/api/v1/*` and send `Authorization: Bearer <token>` (JWT from `POST /api/v1/auth/login`). Legacy dashboard uses `/api/*` (no token in current setup).

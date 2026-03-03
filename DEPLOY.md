@@ -1,4 +1,4 @@
-# Hosting the KINS CRM API
+# Hosting the Kindash API
 
 Deploy the backend so you can test the auth API (and the rest) from a public URL.
 
@@ -11,7 +11,7 @@ Deploy the backend so you can test the auth API (and the rest) from a public URL
 One project = backend (Node/Express) + frontend (React in `frontend/`). One Vercel deployment serves both. Build: `npm install && npm run build` (builds frontend into `frontend/dist`). Runtime: API at `/api/*`, auth at `/auth/*`; all other routes serve the CRM UI.
 
 - _Obsolete:_ Backend (API) at repo root — what you deployed. The root URL returns that JSON as the API “index”.
-- After deploy, open your URL (e.g. **https://kins-crm.vercel.app/**) for the CRM dashboard; `/api/*` and `/health` work as before.
+- After deploy, open your URL (e.g. **https://kindash.vercel.app/**) for the CRM dashboard; `/api/*` and `/health` work as before.
 
 ### Local development
 
@@ -35,7 +35,7 @@ One project = backend (Node/Express) + frontend (React in `frontend/`). One Verc
 ## Option 1: Railway (recommended, simple)
 
 1. Go to [railway.app](https://railway.app) and sign in (e.g. GitHub).
-2. **New Project** → **Deploy from GitHub repo** → select your `Kins-CRM` repo (push your code first if needed).
+2. **New Project** → **Deploy from GitHub repo** → select your `Kindash` repo (push your code first if needed).
 3. Railway detects Node.js and will run `npm install` and `npm start` (or use the Procfile).
 4. **Variables:** In the project, select your service → **Variables** → add:
    - `FIREBASE_PROJECT_ID`
@@ -106,7 +106,7 @@ BASE_URL=https://your-project.vercel.app node test-auth-api.js +441234567890 123
 ## Option 3: Render (same env vars as above)
 
 1. Go to [render.com](https://render.com) and sign in (e.g. GitHub).
-2. **New** → **Web Service** → connect your GitHub repo (`Kins-CRM`).
+2. **New** → **Web Service** → connect your GitHub repo (`Kindash`).
 3. **Settings:**
    - **Build Command:** `npm install`
    - **Start Command:** `npm start` or `node server.js`

@@ -61,7 +61,7 @@ For **new app-style features** (feed, groups, profile, chat token), use **`/api/
 - `/documents` – Documents  
 - `/interests` – Interests  
 - `/surveys`, `/surveys/:surveyId/analytics` – Surveys, SurveyAnalytics  
-- `/posts-moderation` – PostsModeration  
+- `/posts-moderation` – Content Moderation (PostsModeration)  
 - `/onboarding` – Onboarding  
 - `/groups` – Groups list  
 - `/groups/:groupId/chat` – GroupChat  

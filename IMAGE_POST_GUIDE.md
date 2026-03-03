@@ -20,7 +20,7 @@ When creating image or video posts, you **cannot use JSON**. You must use **`mul
 ### Request Structure
 
 ```
-POST https://kins-crm.vercel.app/api/v1/posts
+POST https://kindash.vercel.app/api/v1/posts
 Content-Type: multipart/form-data
 Authorization: Bearer YOUR_JWT_TOKEN
 
@@ -40,7 +40,7 @@ Form Fields:
 ### 1. cURL (Command Line)
 
 ```bash
-curl -X POST https://kins-crm.vercel.app/api/v1/posts \
+curl -X POST https://kindash.vercel.app/api/v1/posts \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "type=image" \
   -F "content=Beautiful sunset today!" \
@@ -52,7 +52,7 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts \
 
 **For video:**
 ```bash
-curl -X POST https://kins-crm.vercel.app/api/v1/posts \
+curl -X POST https://kindash.vercel.app/api/v1/posts \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -F "type=video" \
   -F "content=Check out this video!" \
@@ -65,7 +65,7 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts \
 ### 2. Postman
 
 1. **Select POST method**
-2. **URL:** `https://kins-crm.vercel.app/api/v1/posts`
+2. **URL:** `https://kindash.vercel.app/api/v1/posts`
 3. **Headers:**
    - Add `Authorization: Bearer YOUR_JWT_TOKEN`
    - Do NOT add `Content-Type` (Postman adds it automatically)
@@ -98,7 +98,7 @@ for (let file of fileInput.files) {
   formData.append('media', file);
 }
 
-const response = await fetch('https://kins-crm.vercel.app/api/v1/posts', {
+const response = await fetch('https://kindash.vercel.app/api/v1/posts', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_JWT_TOKEN',
@@ -130,7 +130,7 @@ formData.append('interestIds[]', 'interestId2');
 formData.append('media', fs.createReadStream('/path/to/image.jpg'));
 
 const response = await axios.post(
-  'https://kins-crm.vercel.app/api/v1/posts',
+  'https://kindash.vercel.app/api/v1/posts',
   formData,
   {
     headers: {
@@ -150,7 +150,7 @@ console.log(response.data);
 ```python
 import requests
 
-url = 'https://kins-crm.vercel.app/api/v1/posts'
+url = 'https://kindash.vercel.app/api/v1/posts'
 headers = {
     'Authorization': 'Bearer YOUR_JWT_TOKEN'
 }
@@ -181,7 +181,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 Future<void> uploadImagePost() async {
-  var uri = Uri.parse('https://kins-crm.vercel.app/api/v1/posts');
+  var uri = Uri.parse('https://kindash.vercel.app/api/v1/posts');
   var request = http.MultipartRequest('POST', uri);
   
   // Add headers
@@ -237,7 +237,7 @@ const uploadImage = async () => {
 
     try {
       const response = await axios.post(
-        'https://kins-crm.vercel.app/api/v1/posts',
+        'https://kindash.vercel.app/api/v1/posts',
         formData,
         {
           headers: {
@@ -280,7 +280,7 @@ const uploadImage = async () => {
 
 ```javascript
 // This will NOT work for image posts!
-fetch('https://kins-crm.vercel.app/api/v1/posts', {
+fetch('https://kindash.vercel.app/api/v1/posts', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -361,7 +361,7 @@ curl -X POST http://localhost:3000/api/v1/posts \
 
 ```bash
 # Text post (JSON)
-curl -X POST https://kins-crm.vercel.app/api/v1/posts \
+curl -X POST https://kindash.vercel.app/api/v1/posts \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -371,7 +371,7 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts \
   }'
 
 # Poll post (JSON)
-curl -X POST https://kins-crm.vercel.app/api/v1/posts \
+curl -X POST https://kindash.vercel.app/api/v1/posts \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -416,7 +416,7 @@ curl -X POST https://kins-crm.vercel.app/api/v1/posts \
 ## 🚀 Quick Start (Postman)
 
 1. Open Postman
-2. POST → `https://kins-crm.vercel.app/api/v1/posts`
+2. POST → `https://kindash.vercel.app/api/v1/posts`
 3. Headers → Add `Authorization: Bearer YOUR_TOKEN`
 4. Body → Select `form-data`
 5. Add:

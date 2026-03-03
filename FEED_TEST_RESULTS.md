@@ -235,7 +235,7 @@ userFeedSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2592000 }); // 30 d
 
 The feed APIs are **production-ready** for mobile app integration:
 
-**Base URL:** `https://kins-crm.vercel.app/api/v1`
+**Base URL:** `https://kindash.vercel.app/api/v1`
 
 **Endpoints:**
 ```

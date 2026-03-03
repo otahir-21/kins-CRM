@@ -4,7 +4,7 @@
  * Usage: TOKEN=<your-jwt> node scripts/test-production-posts.js
  * Get a token by logging in via the app or Postman (POST /api/v1/auth/login).
  */
-const BASE = process.env.API_BASE_URL || 'https://kins-crm.vercel.app';
+const BASE = process.env.API_BASE_URL || 'https://kindash.vercel.app';
 const token = process.env.TOKEN;
 
 if (!token) {
