@@ -9,6 +9,7 @@ const {
   getPublicProfile,
   getSuggestions,
   getNearby,
+  getMentionSuggestions,
   searchUsers,
 } = require('../../controllers/v1/followController');
 
@@ -18,6 +19,8 @@ router.use(verifyJwt);
 
 // Search users by username, name, or phone (must be before /:userId)
 router.get('/search', searchUsers);
+// Mention suggestions for @ in chat (users I follow, optional groupId for group chat)
+router.get('/mention-suggestions', getMentionSuggestions);
 // Suggested for you (must be before /:userId)
 router.get('/suggestions', getSuggestions);
 // Nearby kins for map pins (must be before /:userId)

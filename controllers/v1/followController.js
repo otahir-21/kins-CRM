@@ -342,6 +342,68 @@ async function getFollowStatus(req, res) {
 }
 
 /**
+ * GET /api/v1/users/mention-suggestions?q=ja&limit=10&groupId=optional
+ * For @mentions in chat: returns users the current user follows that match q (username/name).
+ * Optional groupId: only suggest users who are also members of that group (for group chat).
+ * q can be empty (return first N followed users) or 1+ chars. Limit default 15, max 30.
+ */
+async function getMentionSuggestions(req, res) {
+  try {
+    const currentUserId = req.userId;
+    const q = (req.query.q || '').trim();
+    const limit = Math.min(30, Math.max(1, parseInt(req.query.limit, 10) || 15));
+    const groupId = (req.query.groupId || '').trim();
+
+    const myId = new mongoose.Types.ObjectId(currentUserId);
+
+    let followingIds = await Follow.find({ followerId: myId }).select('followingId').lean();
+    let userIds = followingIds.map((f) => f.followingId).filter(Boolean);
+    if (userIds.length === 0) {
+      return res.status(200).json({ success: true, users: [] });
+    }
+
+    if (groupId && isValidObjectId(groupId)) {
+      const Group = require('../../models/Group');
+      const group = await Group.findById(groupId).select('members').lean();
+      if (group && group.members && group.members.length > 0) {
+        const memberSet = new Set(group.members.map((id) => id.toString()));
+        userIds = userIds.filter((id) => memberSet.has(id.toString()));
+      }
+      if (userIds.length === 0) {
+        return res.status(200).json({ success: true, users: [] });
+      }
+    }
+
+    const filter = { _id: { $in: userIds } };
+    if (q.length > 0) {
+      const escaped = escapeRegex(q);
+      filter.$or = [
+        { username: { $regex: escaped, $options: 'i' } },
+        { name: { $regex: escaped, $options: 'i' } },
+      ];
+    }
+
+    const users = await User.find(filter)
+      .select('name username profilePictureUrl')
+      .limit(limit)
+      .lean();
+
+    const list = users.map((u) => ({
+      id: u._id.toString(),
+      name: u.name ?? null,
+      username: u.username ?? null,
+      displayName: getDisplayName(u.name, u.username),
+      profilePictureUrl: u.profilePictureUrl ?? null,
+    }));
+
+    return res.status(200).json({ success: true, users: list });
+  } catch (err) {
+    console.error('GET /users/mention-suggestions error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to get mention suggestions.' });
+  }
+}
+
+/**
  * GET /users/search?q=...
  * Search users by username, name, or phone number.
  * Returns public profile + isFollowedByMe. Excludes current user. Min query length 2.
@@ -606,5 +668,6 @@ module.exports = {
   getPublicProfile,
   getSuggestions,
   getNearby,
+  getMentionSuggestions,
   searchUsers,
 };
