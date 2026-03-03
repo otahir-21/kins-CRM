@@ -254,6 +254,17 @@ export const apiService = {
     return api.get('/health');
   },
 
+  // Groups (CRM dashboard). Legacy /api/groups (no JWT).
+  getGroups: (params = {}) => {
+    const sp = new URLSearchParams();
+    if (params.page) sp.append('page', params.page);
+    if (params.limit) sp.append('limit', params.limit);
+    if (params.search) sp.append('search', params.search);
+    if (params.type) sp.append('type', params.type);
+    return api.get(`/api/groups?${sp.toString()}`);
+  },
+  getGroupById: (id) => api.get(`/api/groups/${id}`),
+
   // Ads (CRM dashboard). List uses v1 so it works when only /api/v1 is exposed; create/update/delete use legacy (no JWT).
   getAds: (params = {}) => {
     const sp = new URLSearchParams();

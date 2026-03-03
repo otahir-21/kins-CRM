@@ -70,6 +70,7 @@ const crypto = require('crypto');
 const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const Ad = require('./models/Ad');
+const Group = require('./models/Group');
 const BunnyService = require('./services/BunnyService');
 const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
@@ -986,6 +987,67 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
     const isConfigMissing = error.message && (error.message.includes('Bunny CDN config missing') || error.message.includes('not configured'));
     const status = isConfigMissing ? 503 : 500;
     res.status(status).json({ success: false, error: error.message || 'Image upload failed.' });
+  }
+});
+
+// ==================== GROUPS (legacy for CRM dashboard) ====================
+function toGroupResponse(doc) {
+  if (!doc || !doc._id) return null;
+  return {
+    id: doc._id.toString(),
+    name: doc.name,
+    description: doc.description ?? null,
+    type: doc.type ?? 'interactive',
+    memberCount: (doc.members || []).length,
+    imageUrl: doc.groupImageUrl ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+app.get('/api/groups', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+    const searchQ = (req.query.search || req.query.q || '').trim();
+    const typeFilter = (req.query.type || '').toLowerCase();
+    const filter = {};
+    if (searchQ.length >= 1) {
+      const escaped = searchQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filter.$or = [
+        { name: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+      ];
+    }
+    if (['interactive', 'updates_only'].includes(typeFilter)) filter.type = typeFilter;
+    const [groups, total] = await Promise.all([
+      Group.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+      Group.countDocuments(filter),
+    ]);
+    res.json({
+      success: true,
+      groups: groups.map(toGroupResponse),
+      pagination: { page, limit, total, hasMore: skip + groups.length < total },
+    });
+  } catch (err) {
+    console.error('GET /api/groups:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/groups/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid group ID.' });
+    }
+    const group = await Group.findById(id).lean();
+    if (!group) return res.status(404).json({ success: false, error: 'Group not found.' });
+    res.json({ success: true, group: toGroupResponse(group) });
+  } catch (err) {
+    console.error('GET /api/groups/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
