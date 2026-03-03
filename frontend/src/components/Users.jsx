@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Mail, Phone, Eye } from 'lucide-react';
+import { Search, User, Mail, Phone, Eye, AlertTriangle } from 'lucide-react';
 import { apiService } from '../utils/api';
 
 const Users = () => {
@@ -129,13 +129,14 @@ const Users = () => {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posts</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warnings</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                     No users found
                   </td>
                 </tr>
@@ -167,6 +168,14 @@ const Users = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.postsCount != null ? `${user.postsCount} post${user.postsCount !== 1 ? 's' : ''}` : '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.warningsCount != null ? (
+                        <span className={user.warningsCount > 0 ? 'inline-flex items-center text-amber-700' : ''}>
+                          {user.warningsCount > 0 && <AlertTriangle className="w-4 h-4 mr-1 text-amber-600" />}
+                          {user.warningsCount} warning{user.warningsCount !== 1 ? 's' : ''}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button

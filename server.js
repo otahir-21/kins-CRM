@@ -310,18 +310,31 @@ app.get('/api/users', async (req, res) => {
     if (complete === 'true') {
       const users = await getAllUsersComplete();
       const Post = require('./models/Post');
-      const counts = await Post.aggregate([
-        { $match: { isActive: true } },
-        { $group: { _id: '$userId', count: { $sum: 1 } } },
+      const Notification = require('./models/Notification');
+      const [postCounts, warningCounts] = await Promise.all([
+        Post.aggregate([
+          { $match: { isActive: true } },
+          { $group: { _id: '$userId', count: { $sum: 1 } } },
+        ]),
+        Notification.aggregate([
+          { $match: { type: 'warning' } },
+          { $group: { _id: '$userId', count: { $sum: 1 } } },
+        ]),
       ]);
-      const countMap = {};
-      counts.forEach((c) => {
+      const postsByUserId = {};
+      postCounts.forEach((c) => {
         const key = c._id != null ? String(c._id) : '';
-        if (key) countMap[key] = c.count;
+        if (key) postsByUserId[key] = c.count;
+      });
+      const warningsByUserId = {};
+      warningCounts.forEach((c) => {
+        const key = c._id != null ? String(c._id) : '';
+        if (key) warningsByUserId[key] = c.count;
       });
       users.forEach((u) => {
         const id = u.id != null ? String(u.id).trim() : '';
-        u.postsCount = id ? (countMap[id] ?? 0) : 0;
+        u.postsCount = id ? (postsByUserId[id] ?? 0) : 0;
+        u.warningsCount = id ? (warningsByUserId[id] ?? 0) : 0;
       });
       return res.json({ success: true, count: users.length, data: users });
     }
