@@ -748,6 +748,7 @@ app.post('/api/users/:userId/warn', async (req, res) => {
       senderId: 'admin',
       senderName: 'KINS Admin',
     });
+    console.log('[warn] Notification created for user', userId, 'notificationId', result?.notificationId);
     res.status(200).json({
       success: true,
       message: 'Warning sent. User will see it in-app and receive a push if they have notifications enabled.',
