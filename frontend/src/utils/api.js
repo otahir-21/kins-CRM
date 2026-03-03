@@ -106,6 +106,7 @@ export const apiService = {
     const params = new URLSearchParams();
     if (options.limit) params.append('limit', options.limit);
     if (options.unreadOnly) params.append('unreadOnly', 'true');
+    if (options.type) params.append('type', options.type);
     return api.get(`/api/users/${userId}/notifications?${params.toString()}`);
   },
   

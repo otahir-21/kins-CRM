@@ -74,3 +74,62 @@ If an admin sends a warning from the CRM but the user does not see it in the app
 
 4. **Response shape**
    - `200` with `{ success: true, notifications: [...], data: [...] }`. Each item has `id`, `type`, `title`, `body`, `action`, `senderName`, `read`, `timestamp`, `createdAt`. Use `notifications` or `data` (same array).
+
+---
+
+## GET /me/notifications – exact payload shape (for app alignment)
+
+The backend returns notifications in this shape (from MongoDB via `toNotificationDoc`). Use this to align the app’s parsing and warning UI.
+
+**List response:**
+```json
+{
+  "success": true,
+  "notifications": [ { ... } ],
+  "data": [ { ... } ]
+}
+```
+`notifications` and `data` are the same array.
+
+**Single notification object (e.g. admin warning):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "notificationId": "507f1f77bcf86cd799439011",
+  "userId": "69a69366963faffacea9e0b7",
+  "type": "warning",
+  "title": "Warning from KINS",
+  "body": "Please review our community guidelines.",
+  "senderId": "admin",
+  "senderName": "KINS Admin",
+  "senderProfilePicture": null,
+  "action": "Please review our community guidelines.",
+  "relatedPostId": null,
+  "postThumbnail": null,
+  "read": false,
+  "timestamp": "2026-03-03T12:00:00.000Z",
+  "createdAt": "2026-03-03T12:00:00.000Z"
+}
+```
+
+**Backend behaviour for warnings (POST /api/users/:userId/warn):**
+- `type` is always `"warning"` (so type contains `"warn"`).
+- `title` is the request title or default `"Warning from KINS"`.
+- `body` is the warning message; `action` is set to the same value (so the app can show message from `title`/`body`/`action`).
+- `senderName` is `"KINS Admin"`.
+
+So the app can treat as warning when:
+- `type` contains `"warn"`, or
+- `senderName`/`title` contains `"warn"`, or
+- `action`/`body` contains `"warning from kins"`.
+
+**Fields the app can rely on:**
+| Field | Purpose |
+|-------|--------|
+| `id` or `notificationId` | Unique id (same value). |
+| `type` | e.g. `"warning"`, `"system"`. |
+| `title` | Tray/header; for warnings often "Warning from KINS". |
+| `body` or `action` | Message text (same for warnings). |
+| `senderName` | e.g. "KINS Admin". |
+| `read` | boolean. |
+| `createdAt` or `timestamp` | ISO date string (same value). |

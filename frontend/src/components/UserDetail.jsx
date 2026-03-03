@@ -31,12 +31,15 @@ const UserDetail = () => {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [postsHasMore, setPostsHasMore] = useState(false);
   const [postsNextToken, setPostsNextToken] = useState(null);
+  const [warnings, setWarnings] = useState([]);
+  const [loadingWarnings, setLoadingWarnings] = useState(false);
 
   useEffect(() => {
     setUser(null);
     setUserPosts([]);
     setPostsNextToken(null);
     setPostsHasMore(false);
+    setWarnings([]);
     fetchUserDetails();
   }, [userId]);
 
@@ -45,6 +48,30 @@ const UserDetail = () => {
       fetchUserPosts();
     }
   }, [user, userId]);
+
+  const fetchWarnings = async () => {
+    if (!userId) return;
+    setLoadingWarnings(true);
+    setWarnings([]);
+    try {
+      const res = await apiService.getUserNotifications(userId, { limit: 50, type: 'warning' });
+      const list = res.data?.data ?? [];
+      const currentUserId = String(userId);
+      setWarnings(list.filter((w) => String(w.userId) === currentUserId));
+    } catch {
+      setWarnings([]);
+    } finally {
+      setLoadingWarnings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!userId || !user?.id) {
+      setWarnings([]);
+      return;
+    }
+    fetchWarnings();
+  }, [userId, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,6 +311,7 @@ const UserDetail = () => {
                   await apiService.deleteUser(user.id);
                   alert('Warning sent and user deactivated.');
                   fetchUserDetails();
+                  fetchWarnings();
                 } catch (e) {
                   alert(e.response?.data?.error || 'Failed to warn or deactivate');
                 } finally {
@@ -297,6 +325,46 @@ const UserDetail = () => {
               Warn & delete
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Warnings sent to this user */}
+      {user && (
+        <div className="mb-6 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            Warnings sent
+            {!loadingWarnings && (
+              <span className="text-sm font-normal text-gray-500">
+                ({warnings.length} {warnings.length === 1 ? 'warning' : 'warnings'})
+              </span>
+            )}
+          </h2>
+          {loadingWarnings ? (
+            <p className="text-gray-500 text-sm">Loading...</p>
+          ) : warnings.length === 0 ? (
+            <p className="text-gray-500 text-sm">No warnings sent to this user yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {warnings.map((w) => (
+                <li
+                  key={w.id || w.notificationId}
+                  className="flex flex-col p-3 bg-amber-50 border border-amber-200 rounded-lg text-left"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-amber-900">{w.title || 'Warning'}</span>
+                    <span className="text-xs text-gray-500">
+                      {formatFirestoreDateTime(w.createdAt || w.timestamp) || '—'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-1">{w.body || w.action || '—'}</p>
+                  {w.senderName && (
+                    <p className="text-xs text-gray-500 mt-1">From: {w.senderName}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -693,6 +761,7 @@ const UserDetail = () => {
                   setShowWarnModal(false);
                   setWarnMessage('');
                   setWarnTitle('Warning from KINS');
+                  fetchWarnings();
                 } catch (err) {
                   alert(err.response?.data?.error || 'Failed to send warning');
                 } finally {

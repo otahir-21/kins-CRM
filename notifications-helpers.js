@@ -105,11 +105,15 @@ async function sendBulkNotifications(userIds, notificationData) {
   return { results };
 }
 
+/** Returns notifications for a single user only. userId must be a valid MongoDB ObjectId string. */
 async function getUserNotifications(userId, options = {}) {
-  if (!Notification || !mongoose.Types.ObjectId.isValid(userId)) return [];
+  if (!Notification || !userId || typeof userId !== 'string') return [];
+  const trimmed = userId.trim();
+  if (!mongoose.Types.ObjectId.isValid(trimmed)) return [];
   const limit = Math.min(parseInt(options.limit) || 50, 100);
-  const query = { userId: new mongoose.Types.ObjectId(userId) };
+  const query = { userId: new mongoose.Types.ObjectId(trimmed) };
   if (options.unreadOnly) query.read = false;
+  if (options.type) query.type = options.type;
   const list = await Notification.find(query).sort({ createdAt: -1 }).limit(limit).lean();
   return list.map(toNotificationDoc).filter(Boolean);
 }

@@ -396,6 +396,56 @@ userDetailRouter.get('/posts', async (req, res) => {
   }
 });
 
+// Notifications for this user only (must be on this router so :userId is the profile we're viewing)
+userDetailRouter.get('/notifications', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit, unreadOnly, type } = req.query;
+    const options = {};
+    if (limit) options.limit = parseInt(limit);
+    if (unreadOnly === 'true') options.unreadOnly = true;
+    if (type) options.type = type;
+    const notifications = await getUserNotifications(userId, options);
+    res.json({ success: true, count: notifications.length, data: notifications });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/notifications:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+userDetailRouter.get('/notifications/stats', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const stats = await getNotificationStats(userId);
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error in GET /api/users/:userId/notifications/stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+userDetailRouter.put('/notifications/:notificationId/read', async (req, res) => {
+  try {
+    const { userId, notificationId } = req.params;
+    await markNotificationAsRead(userId, notificationId);
+    res.json({ success: true, message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Error in PUT /api/users/:userId/notifications/:id/read:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+userDetailRouter.put('/notifications/read-all', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const count = await markAllNotificationsAsRead(userId);
+    res.json({ success: true, message: `${count} notifications marked as read`, count });
+  } catch (error) {
+    console.error('Error in PUT /api/users/:userId/notifications/read-all:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get user by ID (generic) – on same router so /api/users/:userId with no subpath
 userDetailRouter.get('/', async (req, res) => {
   try {
@@ -595,86 +645,6 @@ app.post('/api/notifications/send-bulk', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in POST /api/notifications/send-bulk:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Get user's notifications
-app.get('/api/users/:userId/notifications', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { limit, unreadOnly } = req.query;
-
-    const options = {};
-    if (limit) options.limit = parseInt(limit);
-    if (unreadOnly === 'true') options.unreadOnly = true;
-
-    const notifications = await getUserNotifications(userId, options);
-    res.json({
-      success: true,
-      count: notifications.length,
-      data: notifications,
-    });
-  } catch (error) {
-    console.error('Error in GET /api/users/:userId/notifications:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Get notification statistics
-app.get('/api/users/:userId/notifications/stats', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const stats = await getNotificationStats(userId);
-    res.json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    console.error('Error in GET /api/users/:userId/notifications/stats:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Mark notification as read
-app.put('/api/users/:userId/notifications/:notificationId/read', async (req, res) => {
-  try {
-    const { userId, notificationId } = req.params;
-    await markNotificationAsRead(userId, notificationId);
-    res.json({
-      success: true,
-      message: 'Notification marked as read',
-    });
-  } catch (error) {
-    console.error('Error in PUT /api/users/:userId/notifications/:notificationId/read:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Mark all notifications as read
-app.put('/api/users/:userId/notifications/read-all', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const count = await markAllNotificationsAsRead(userId);
-    res.json({
-      success: true,
-      message: `${count} notifications marked as read`,
-      count,
-    });
-  } catch (error) {
-    console.error('Error in PUT /api/users/:userId/notifications/read-all:', error);
     res.status(500).json({
       success: false,
       error: error.message,
