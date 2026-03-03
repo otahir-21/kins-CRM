@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Mail, Phone, Eye, Edit } from 'lucide-react';
+import { Search, User, Mail, Phone, Eye } from 'lucide-react';
 import { apiService } from '../utils/api';
 
 const Users = () => {
@@ -169,21 +169,13 @@ const Users = () => {
                       {user.postsCount != null ? `${user.postsCount} post${user.postsCount !== 1 ? 's' : ''}` : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => handleViewUser(user.id)}
-                          className="text-primary-600 hover:text-primary-900 flex items-center"
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </button>
-                        <button
-                          className="text-gray-600 hover:text-gray-900 flex items-center"
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleViewUser(user.id)}
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))

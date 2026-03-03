@@ -8,6 +8,7 @@ import Interests from './components/Interests';
 import Surveys from './components/Surveys';
 import SurveyAnalytics from './components/SurveyAnalytics';
 import Notifications from './components/Notifications';
+import BroadcastNotifications from './components/BroadcastNotifications';
 import PostsModeration from './components/PostsModeration';
 import Onboarding from './components/Onboarding';
 import Analytics from './components/Analytics';
@@ -39,6 +40,7 @@ function App() {
           <Route path="/surveys" element={<Surveys />} />
           <Route path="/surveys/:surveyId/analytics" element={<SurveyAnalytics />} />
           <Route path="/posts-moderation" element={<PostsModeration />} />
+          <Route path="/broadcast" element={<BroadcastNotifications />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/ads" element={<Ads />} />
           <Route path="/groups" element={<Groups />} />

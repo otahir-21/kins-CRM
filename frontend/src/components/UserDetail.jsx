@@ -9,6 +9,7 @@ const UserDetail = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [userInterests, setUserInterests] = useState([]);
+  const [interestNameById, setInterestNameById] = useState({});
   const [loading, setLoading] = useState(true);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationForm, setNotificationForm] = useState({
@@ -44,6 +45,54 @@ const UserDetail = () => {
       fetchUserPosts();
     }
   }, [user, userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiService.getAllInterests(true, true);
+        if (cancelled) return;
+        const map = {};
+        const flat = res.data?.interests || res.data?.tags || res.data?.data;
+        const categories = res.data?.categories || res.data?.data?.categories || [];
+        const uncategorized = res.data?.uncategorized || res.data?.data?.uncategorized || [];
+        if (Array.isArray(flat) && flat.length > 0) {
+          flat.forEach((item) => {
+            if (item && item.id != null) map[String(item.id)] = item.name || 'Interest';
+          });
+        } else {
+          categories.forEach((cat) => {
+            (cat.tags || []).forEach((item) => {
+              if (item && item.id != null) map[String(item.id)] = item.name || 'Interest';
+            });
+          });
+          uncategorized.forEach((item) => {
+            if (item && item.id != null) map[String(item.id)] = item.name || 'Interest';
+          });
+        }
+        if (!cancelled) setInterestNameById(map);
+      } catch {
+        if (!cancelled) setInterestNameById({});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id || !userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiService.getUserInterests(userId, true);
+        if (cancelled) return;
+        const list = res.data?.data || [];
+        if (Array.isArray(list) && list.length > 0) setUserInterests(list);
+      } catch {
+        // ignore; we use interestNameById from getAllInterests
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, userId]);
 
   const fetchUserPosts = async (append = false) => {
     const targetUserId = userId; // from URL – only show this user's posts
@@ -341,7 +390,7 @@ const UserDetail = () => {
               const hasIds = user.interests && user.interests.length > 0;
               const displayList = userInterests.length > 0
                 ? userInterests
-                : (hasIds ? user.interests.map((id) => ({ id: String(id), name: 'Interest' })) : []);
+                : (hasIds ? user.interests.map((id) => ({ id: String(id), name: interestNameById[String(id)] || 'Interest' })) : []);
               if (displayList.length > 0) {
                 return (
                   <div className="flex flex-wrap gap-2">
