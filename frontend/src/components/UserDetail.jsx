@@ -215,15 +215,6 @@ const UserDetail = () => {
               <Bell className="w-4 h-4 mr-2" />
               Send Notification
             </button>
-            <a
-              href={user.email ? `mailto:${user.email}` : '#'}
-              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${user.email ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-              title={user.email ? 'Open email client' : 'No email set'}
-              onClick={(e) => !user.email && e.preventDefault()}
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              Send email
-            </a>
             <button
               type="button"
               onClick={() => {

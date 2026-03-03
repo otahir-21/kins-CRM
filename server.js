@@ -732,7 +732,7 @@ app.get('/api/users/:userId/fcm-token', async (req, res) => {
 
 // ==================== ADMIN: WARN & DELETE USER ====================
 
-// Admin: send warning to user (in-app notification + push; email not implemented, see docs)
+// Admin: send warning to user (in-app notification + push only)
 app.post('/api/users/:userId/warn', async (req, res) => {
   try {
     const { userId } = req.params;
