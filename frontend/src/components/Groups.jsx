@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, MessageCircle, Users } from 'lucide-react';
 import { apiService } from '../utils/api';
 
@@ -11,7 +10,6 @@ export default function Groups() {
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, hasMore: false });
-  const navigate = useNavigate();
 
   const [searchDebounced, setSearchDebounced] = useState('');
   useEffect(() => {
@@ -43,10 +41,6 @@ export default function Groups() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleViewChat = (groupId) => {
-    navigate(`/groups/${groupId}/chat`);
   };
 
   if (loading && groups.length === 0) {
@@ -107,13 +101,12 @@ export default function Groups() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Members</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {groups.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     {error ? 'Failed to load groups.' : 'No groups found. Groups created in the app will appear here.'}
                   </td>
                 </tr>
@@ -151,14 +144,6 @@ export default function Groups() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {group.updatedAt ? new Date(group.updatedAt).toLocaleDateString() : '—'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleViewChat(group.id)}
-                        className="text-primary-600 hover:text-primary-900"
-                      >
-                        View chat
-                      </button>
                     </td>
                   </tr>
                 ))
