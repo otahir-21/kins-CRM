@@ -3,23 +3,13 @@
 Admins can moderate content efficiently using:
 
 1. **Search bar** – Type any term and click Search to find posts containing that text (Active and Deleted tabs).
-2. **Flagged tab** – Posts that contain **any of 48 keywords** are listed here. Each post shows which keyword(s) matched.
+2. **Flagged tab** – Posts that contain **any of your moderation keywords** are listed here. Each post shows which keyword(s) matched.
+3. **Manage keywords in CRM** – On the Posts Moderation page, open **"Manage flagging keywords"** to add, remove, and save keywords (stored in DB, no restart needed). Up to 200 keywords.
 
-## Your 48 keywords
+## Adding keywords
 
-Edit **`config/moderationKeywords.js`** and replace the placeholder entries (`replace_1` … `replace_48`) with your actual list of abusive or bad terms. One term per line; case-insensitive matching.
-
-Example:
-
-```js
-const MODERATION_KEYWORDS = [
-  'term1',
-  'term2',
-  // ... 48 total
-];
-```
-
-After changing the file, restart the backend. The Flagged tab in the CRM will use the new list on the next load.
+- **From the CRM:** Open Posts Moderation → **Manage flagging keywords** → add terms and click **Save keywords**. These are stored in the database and used immediately by the Flagged tab.
+- **Fallback (config):** If no keywords are saved in the DB, the backend uses **`config/moderationKeywords.js`**. Edit that file to set default/placeholder terms; restart the backend after changes.
 
 ## API
 

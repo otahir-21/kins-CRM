@@ -51,8 +51,10 @@ const {
   deletePost,
   hardDeletePost,
   getReportedPostsPaginated,
-  getFlaggedPostsPaginated
+  getFlaggedPostsPaginated,
+  getModerationKeywords,
 } = require('./posts-helpers');
+const ModerationSetting = require('./models/ModerationSetting');
 
 const {
   getOnboardingSteps,
@@ -637,6 +639,39 @@ app.delete('/api/users/:userId', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in DELETE /api/users/:userId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== MODERATION KEYWORDS (CRM-managed) ====================
+
+// Get list of moderation keywords (used by Flagged tab; editable in CRM)
+app.get('/api/moderation/keywords', async (req, res) => {
+  try {
+    const keywords = await getModerationKeywords();
+    res.json({ success: true, keywords });
+  } catch (error) {
+    console.error('Error in GET /api/moderation/keywords:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update moderation keywords (max 200). Replaces entire list.
+app.put('/api/moderation/keywords', async (req, res) => {
+  try {
+    const list = Array.isArray(req.body.keywords) ? req.body.keywords : [];
+    const keywords = list
+      .map((k) => (k != null ? String(k).trim() : ''))
+      .filter((k) => k !== '')
+      .slice(0, 200);
+    const doc = await ModerationSetting.findOneAndUpdate(
+      { key: ModerationSetting.DOC_ID },
+      { $set: { keywords } },
+      { new: true, upsert: true }
+    ).lean();
+    res.json({ success: true, keywords: doc.keywords || [] });
+  } catch (error) {
+    console.error('Error in PUT /api/moderation/keywords:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

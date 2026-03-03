@@ -224,6 +224,8 @@ export const apiService = {
     if (params.startAfter) searchParams.append('startAfter', params.startAfter);
     return api.get(`/api/posts/flagged?${searchParams.toString()}`);
   },
+  getModerationKeywords: () => api.get('/api/moderation/keywords'),
+  updateModerationKeywords: (keywords) => api.put('/api/moderation/keywords', { keywords }),
   
   getPostById: (postId) => {
     return api.get(`/api/posts/${postId}`);

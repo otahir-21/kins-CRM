@@ -4,7 +4,20 @@
 const mongoose = require('mongoose');
 const Post = require('./models/Post');
 const User = require('./models/User');
-const { MODERATION_KEYWORDS } = require('./config/moderationKeywords');
+const ModerationSetting = require('./models/ModerationSetting');
+const MODERATION_DOC_ID = ModerationSetting.DOC_ID || 'moderation_keywords';
+const { MODERATION_KEYWORDS: DEFAULT_MODERATION_KEYWORDS } = require('./config/moderationKeywords');
+
+/** Get moderation keywords from DB; fall back to config if empty or missing. */
+async function getModerationKeywords() {
+  try {
+    const doc = await ModerationSetting.findOne({ key: MODERATION_DOC_ID }).select('keywords').lean();
+    if (doc && Array.isArray(doc.keywords) && doc.keywords.length > 0) {
+      return doc.keywords.filter((k) => k != null && String(k).trim() !== '');
+    }
+  } catch (_) { /* ignore */ }
+  return Array.isArray(DEFAULT_MODERATION_KEYWORDS) ? DEFAULT_MODERATION_KEYWORDS : [];
+}
 
 const isValidId = (id) => id && mongoose.Types.ObjectId.isValid(id);
 
@@ -125,11 +138,13 @@ async function getReportedPostsPaginated(options = {}) {
 /**
  * Get posts that contain any of the moderation keywords (flagged for review). Paginated.
  * Returns posts with matchedKeywords: string[] so CRM can show which terms triggered the flag.
+ * Keywords are read from DB (CRM-managed) with fallback to config.
  */
 async function getFlaggedPostsPaginated(options = {}) {
   const limit = Math.min(parseInt(options.limit) || 20, 50);
   const startAfterDocId = options.startAfterDocId || null;
 
+  const MODERATION_KEYWORDS = await getModerationKeywords();
   if (!MODERATION_KEYWORDS || MODERATION_KEYWORDS.length === 0) {
     return { posts: [], nextPageToken: null, hasMore: false };
   }
@@ -178,4 +193,5 @@ module.exports = {
   hardDeletePost,
   getReportedPostsPaginated,
   getFlaggedPostsPaginated,
+  getModerationKeywords,
 };
