@@ -72,6 +72,7 @@ const authRoutes = require('./auth-routes');
 const Ad = require('./models/Ad');
 const Group = require('./models/Group');
 const BrandVerificationRequest = require('./models/BrandVerificationRequest');
+const MarketplaceListing = require('./models/MarketplaceListing');
 const BunnyService = require('./services/BunnyService');
 const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
@@ -1224,6 +1225,246 @@ app.patch('/api/brands/verification/:id/reject', async (req, res) => {
     res.json({ success: true, request: toBrandVerificationResponse(doc, user) });
   } catch (err) {
     console.error('PATCH /api/brands/verification/:id/reject:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== MARKETPLACE (legacy for CRM dashboard) ====================
+
+function toMarketplaceListingResponse(doc, seller) {
+  if (!doc || !doc._id) return null;
+  const s = seller || null;
+  const sellerPayload =
+    s && s._id
+      ? {
+          id: s._id.toString(),
+          name: s.name ?? null,
+          username: s.username ?? null,
+          profilePictureUrl: s.profilePictureUrl ?? null,
+        }
+      : null;
+  return {
+    id: doc._id.toString(),
+    sellerId: doc.sellerId.toString(),
+    title: doc.title,
+    description: doc.description ?? null,
+    price: doc.price,
+    currency: doc.currency,
+    category: doc.category ?? null,
+    condition: doc.condition ?? null,
+    imageUrls: doc.imageUrls ?? [],
+    locationCity: doc.locationCity ?? null,
+    locationCountry: doc.locationCountry ?? null,
+    status: doc.status,
+    isFeatured: doc.isFeatured ?? false,
+    tags: doc.tags ?? [],
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    seller: sellerPayload,
+  };
+}
+
+app.get('/api/marketplace/listings', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+    const q = (req.query.q || req.query.search || '').trim();
+    const status = (req.query.status || '').trim().toLowerCase();
+
+    const filter = {};
+    if (status && ['draft', 'active', 'sold', 'archived'].includes(status)) {
+      filter.status = status;
+    }
+
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+      const re = new RegExp(escaped, 'i');
+      filter.$or = [{ title: re }, { description: re }, { category: re }];
+    }
+
+    const [docs, total] = await Promise.all([
+      MarketplaceListing.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      MarketplaceListing.countDocuments(filter),
+    ]);
+
+    const sellerIds = docs.map((d) => d.sellerId).filter(Boolean);
+    const User = require('./models/User');
+    const sellers =
+      sellerIds.length > 0
+        ? await User.find({ _id: { $in: sellerIds } }).select('name username profilePictureUrl').lean()
+        : [];
+    const sellerMap = new Map(sellers.map((u) => [u._id.toString(), u]));
+
+    res.json({
+      success: true,
+      listings: docs.map((d) =>
+        toMarketplaceListingResponse(d, sellerMap.get(d.sellerId.toString()) || null)
+      ),
+      pagination: { page, limit, total, hasMore: skip + docs.length < total },
+    });
+  } catch (err) {
+    console.error('GET /api/marketplace/listings:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/marketplace/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
+    }
+    const doc = await MarketplaceListing.findById(id).lean();
+    if (!doc) return res.status(404).json({ success: false, error: 'Listing not found.' });
+    const User = require('./models/User');
+    const seller = await User.findById(doc.sellerId)
+      .select('name username profilePictureUrl')
+      .lean();
+    res.json({ success: true, listing: toMarketplaceListingResponse(doc, seller) });
+  } catch (err) {
+    console.error('GET /api/marketplace/listings/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/marketplace/listings', async (req, res) => {
+  try {
+    const {
+      sellerId,
+      title,
+      description,
+      price,
+      currency,
+      category,
+      condition,
+      imageUrls,
+      locationCity,
+      locationCountry,
+      status,
+      isFeatured,
+      tags,
+    } = req.body || {};
+
+    if (!sellerId || !require('mongoose').Types.ObjectId.isValid(sellerId)) {
+      return res.status(400).json({ success: false, error: 'Valid sellerId is required.' });
+    }
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'title is required.' });
+    }
+    const priceNum = parseFloat(price);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
+      return res.status(400).json({ success: false, error: 'price must be a non-negative number.' });
+    }
+
+    const payload = {
+      sellerId,
+      title: String(title).trim(),
+      description: description != null ? String(description).trim() : undefined,
+      price: priceNum,
+      currency: currency ? String(currency).trim() : undefined,
+      category: category ? String(category).trim() : undefined,
+      condition: condition ? String(condition).trim() : undefined,
+      locationCity: locationCity ? String(locationCity).trim() : undefined,
+      locationCountry: locationCountry ? String(locationCountry).trim() : undefined,
+      status: status ? String(status).trim() : undefined,
+      isFeatured: !!isFeatured,
+    };
+
+    if (Array.isArray(imageUrls)) {
+      payload.imageUrls = imageUrls.map((u) => (u != null ? String(u).trim() : '')).filter((u) => u.length > 0);
+    }
+    if (Array.isArray(tags)) {
+      payload.tags = tags.map((t) => (t != null ? String(t).trim() : '')).filter((t) => t.length > 0);
+    }
+
+    let doc = await MarketplaceListing.create(payload);
+    doc = doc.toObject();
+    const User = require('./models/User');
+    const seller = await User.findById(doc.sellerId)
+      .select('name username profilePictureUrl')
+      .lean();
+    res.status(201).json({ success: true, listing: toMarketplaceListingResponse(doc, seller) });
+  } catch (err) {
+    console.error('POST /api/marketplace/listings:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/marketplace/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
+    }
+    const doc = await MarketplaceListing.findById(id);
+    if (!doc) return res.status(404).json({ success: false, error: 'Listing not found.' });
+
+    const {
+      sellerId,
+      title,
+      description,
+      price,
+      currency,
+      category,
+      condition,
+      imageUrls,
+      locationCity,
+      locationCountry,
+      status,
+      isFeatured,
+      tags,
+    } = req.body || {};
+
+    if (sellerId && require('mongoose').Types.ObjectId.isValid(sellerId)) {
+      doc.sellerId = sellerId;
+    }
+    if (title !== undefined) doc.title = String(title).trim();
+    if (description !== undefined) doc.description = String(description).trim();
+    if (price !== undefined) {
+      const priceNum = parseFloat(price);
+      if (Number.isNaN(priceNum) || priceNum < 0) {
+        return res.status(400).json({ success: false, error: 'price must be a non-negative number.' });
+      }
+      doc.price = priceNum;
+    }
+    if (currency !== undefined) doc.currency = String(currency).trim();
+    if (category !== undefined) doc.category = String(category).trim();
+    if (condition !== undefined) doc.condition = String(condition).trim();
+    if (locationCity !== undefined) doc.locationCity = String(locationCity).trim();
+    if (locationCountry !== undefined) doc.locationCountry = String(locationCountry).trim();
+    if (status !== undefined) doc.status = String(status).trim();
+    if (typeof isFeatured === 'boolean') doc.isFeatured = isFeatured;
+    if (Array.isArray(imageUrls)) {
+      doc.imageUrls = imageUrls.map((u) => (u != null ? String(u).trim() : '')).filter((u) => u.length > 0);
+    }
+    if (Array.isArray(tags)) {
+      doc.tags = tags.map((t) => (t != null ? String(t).trim() : '')).filter((t) => t.length > 0);
+    }
+
+    await doc.save();
+    const User = require('./models/User');
+    const seller = await User.findById(doc.sellerId)
+      .select('name username profilePictureUrl')
+      .lean();
+    res.json({ success: true, listing: toMarketplaceListingResponse(doc.toObject(), seller) });
+  } catch (err) {
+    console.error('PUT /api/marketplace/listings/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/marketplace/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
+    }
+    const doc = await MarketplaceListing.findByIdAndDelete(id);
+    if (!doc) return res.status(404).json({ success: false, error: 'Listing not found.' });
+    res.json({ success: true, message: 'Listing deleted.' });
+  } catch (err) {
+    console.error('DELETE /api/marketplace/listings/:id:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

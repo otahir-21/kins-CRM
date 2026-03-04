@@ -17,6 +17,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Groups from './components/Groups';
 import BrandVerification from './components/BrandVerification';
+import Marketplace from './components/Marketplace';
 import GroupChat from './components/GroupChat';
 import Ads from './components/Ads';
 
@@ -45,6 +46,7 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/ads" element={<Ads />} />
           <Route path="/brands" element={<BrandVerification />} />
+          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:groupId/chat" element={<GroupChat />} />
           <Route path="/analytics" element={<Analytics />} />

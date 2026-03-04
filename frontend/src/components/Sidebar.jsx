@@ -29,6 +29,7 @@ const Sidebar = () => {
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/groups', icon: MessageCircle, label: 'Groups' },
     { path: '/ads', icon: ImageIcon, label: 'Ads' },
+    { path: '/marketplace', icon: Tag, label: 'Marketplace' },
     { path: '/interests', icon: Tag, label: 'Interests' },
     { path: '/surveys', icon: ClipboardList, label: 'Surveys' },
     { path: '/posts-moderation', icon: ShieldCheck, label: 'Content Moderation' },

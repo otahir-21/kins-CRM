@@ -277,6 +277,21 @@ export const apiService = {
   updateAd: (id, formData) => api.put(`/api/ads/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteAd: (id) => api.delete(`/api/ads/${id}`),
 
+  // Marketplace listings (CRM dashboard). Legacy /api/marketplace/listings CRUD.
+  getMarketplaceListings: (params = {}) => {
+    const sp = new URLSearchParams();
+    if (params.page) sp.append('page', params.page);
+    if (params.limit) sp.append('limit', params.limit);
+    if (params.status) sp.append('status', params.status);
+    if (params.q && String(params.q).trim()) sp.append('q', String(params.q).trim());
+    const qs = sp.toString();
+    return api.get(`/api/marketplace/listings${qs ? `?${qs}` : ''}`);
+  },
+  getMarketplaceListingById: (id) => api.get(`/api/marketplace/listings/${id}`),
+  createMarketplaceListing: (data) => api.post('/api/marketplace/listings', data),
+  updateMarketplaceListing: (id, data) => api.put(`/api/marketplace/listings/${id}`, data),
+  deleteMarketplaceListing: (id) => api.delete(`/api/marketplace/listings/${id}`),
+
   // Brand verification (CRM dashboard)
   getBrandVerificationRequests: (params = {}) => {
     const sp = new URLSearchParams();
