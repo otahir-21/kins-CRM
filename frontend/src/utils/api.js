@@ -276,6 +276,22 @@ export const apiService = {
   createAd: (formData) => api.post('/api/ads', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   updateAd: (id, formData) => api.put(`/api/ads/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   deleteAd: (id) => api.delete(`/api/ads/${id}`),
+
+  // Brand verification (CRM dashboard)
+  getBrandVerificationRequests: (params = {}) => {
+    const sp = new URLSearchParams();
+    if (params.status) sp.append('status', params.status);
+    if (params.page) sp.append('page', params.page);
+    if (params.limit) sp.append('limit', params.limit);
+    if (params.q && String(params.q).trim()) sp.append('q', String(params.q).trim());
+    const qs = sp.toString();
+    return api.get(`/api/brands/verification${qs ? `?${qs}` : ''}`);
+  },
+  getBrandVerificationRequestById: (id) => api.get(`/api/brands/verification/${id}`),
+  approveBrandVerification: (id, reviewNotes) =>
+    api.patch(`/api/brands/verification/${id}/approve`, reviewNotes ? { reviewNotes } : {}),
+  rejectBrandVerification: (id, reviewNotes) =>
+    api.patch(`/api/brands/verification/${id}/reject`, reviewNotes ? { reviewNotes } : {}),
 };
 
 export default api;

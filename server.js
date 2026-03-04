@@ -71,6 +71,7 @@ const { uploadToBunnyCDN } = require('./upload-helpers');
 const authRoutes = require('./auth-routes');
 const Ad = require('./models/Ad');
 const Group = require('./models/Group');
+const BrandVerificationRequest = require('./models/BrandVerificationRequest');
 const BunnyService = require('./services/BunnyService');
 const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
@@ -1047,6 +1048,182 @@ app.get('/api/groups/:id', async (req, res) => {
     res.json({ success: true, group: toGroupResponse(group) });
   } catch (err) {
     console.error('GET /api/groups/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== BRAND VERIFICATION (legacy for CRM dashboard) ====================
+
+function toBrandVerificationResponse(doc, user) {
+  if (!doc || !doc._id) return null;
+  const u = user || null;
+  const userPayload =
+    u && u._id
+      ? {
+          id: u._id.toString(),
+          name: u.name ?? null,
+          username: u.username ?? null,
+          profilePictureUrl: u.profilePictureUrl ?? null,
+          followerCount: u.followerCount ?? 0,
+          followingCount: u.followingCount ?? 0,
+        }
+      : null;
+
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId.toString(),
+    brandName: doc.brandName,
+    companyName: doc.companyName ?? null,
+    website: doc.website ?? null,
+    contactEmail: doc.contactEmail ?? null,
+    contactPhone: doc.contactPhone ?? null,
+    industry: doc.industry ?? null,
+    description: doc.description ?? null,
+    socialLinks: doc.socialLinks ?? [],
+    documentUrls: doc.documentUrls ?? [],
+    status: doc.status,
+    reviewNotes: doc.reviewNotes ?? null,
+    reviewedBy: doc.reviewedBy ? doc.reviewedBy.toString() : null,
+    reviewedAt: doc.reviewedAt ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    user: userPayload,
+  };
+}
+
+app.get('/api/brands/verification', async (req, res) => {
+  try {
+    const status = (req.query.status || 'pending').toLowerCase();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+    const q = (req.query.q || '').trim();
+
+    const filter = {};
+    if (['pending', 'approved', 'rejected'].includes(status)) {
+      filter.status = status;
+    }
+
+    let userIdsFilter = null;
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+      const re = new RegExp(escaped, 'i');
+      const User = require('./models/User');
+      const users = await User.find({
+        $or: [{ name: re }, { username: re }, { email: re }, { phoneNumber: re }],
+      })
+        .select('_id')
+        .lean();
+      userIdsFilter = users.map((u) => u._id);
+      if (userIdsFilter.length === 0) {
+        return res.json({
+          success: true,
+          requests: [],
+          pagination: { page, limit, total: 0, hasMore: false },
+        });
+      }
+      filter.userId = { $in: userIdsFilter };
+    }
+
+    const [docs, total] = await Promise.all([
+      BrandVerificationRequest.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      BrandVerificationRequest.countDocuments(filter),
+    ]);
+
+    const allUserIds = docs.map((d) => d.userId).filter(Boolean);
+    const User = require('./models/User');
+    const users =
+      allUserIds.length > 0
+        ? await User.find({ _id: { $in: allUserIds } })
+            .select('name username profilePictureUrl followerCount followingCount')
+            .lean()
+        : [];
+    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+    res.json({
+      success: true,
+      requests: docs.map((d) => toBrandVerificationResponse(d, userMap.get(d.userId.toString()) || null)),
+      pagination: { page, limit, total, hasMore: skip + docs.length < total },
+    });
+  } catch (err) {
+    console.error('GET /api/brands/verification:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/brands/verification/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
+    }
+    const doc = await BrandVerificationRequest.findById(id).lean();
+    if (!doc) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+    const User = require('./models/User');
+    const user = await User.findById(doc.userId)
+      .select('name username profilePictureUrl followerCount followingCount')
+      .lean();
+    res.json({ success: true, request: toBrandVerificationResponse(doc, user) });
+  } catch (err) {
+    console.error('GET /api/brands/verification/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/brands/verification/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
+    }
+    const reviewNotes = req.body?.reviewNotes;
+    const doc = await BrandVerificationRequest.findByIdAndUpdate(
+      id,
+      {
+        status: 'approved',
+        reviewNotes: reviewNotes != null ? String(reviewNotes).trim() : undefined,
+        reviewedAt: new Date(),
+      },
+      { new: true }
+    ).lean();
+    if (!doc) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+
+    const User = require('./models/User');
+    await User.findByIdAndUpdate(doc.userId, { isBrand: true, isBrandVerified: true });
+    const user = await User.findById(doc.userId)
+      .select('name username profilePictureUrl followerCount followingCount')
+      .lean();
+    res.json({ success: true, request: toBrandVerificationResponse(doc, user) });
+  } catch (err) {
+    console.error('PATCH /api/brands/verification/:id/approve:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/brands/verification/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!require('mongoose').Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
+    }
+    const reviewNotes = req.body?.reviewNotes;
+    const doc = await BrandVerificationRequest.findByIdAndUpdate(
+      id,
+      {
+        status: 'rejected',
+        reviewNotes: reviewNotes != null ? String(reviewNotes).trim() : undefined,
+        reviewedAt: new Date(),
+      },
+      { new: true }
+    ).lean();
+    if (!doc) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+    const User = require('./models/User');
+    const user = await User.findById(doc.userId)
+      .select('name username profilePictureUrl followerCount followingCount')
+      .lean();
+    res.json({ success: true, request: toBrandVerificationResponse(doc, user) });
+  } catch (err) {
+    console.error('PATCH /api/brands/verification/:id/reject:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
