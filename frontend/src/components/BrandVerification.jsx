@@ -265,7 +265,7 @@ export default function BrandVerification() {
                 Previous
               </button>
               <button
-                onClick={() => setPage((p) => p + 1))}
+                onClick={() => setPage((p) => p + 1)}
                 disabled={!pagination.hasMore}
                 className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
