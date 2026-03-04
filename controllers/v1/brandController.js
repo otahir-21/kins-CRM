@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const BrandVerificationRequest = require('../../models/BrandVerificationRequest');
 const User = require('../../models/User');
+const { uploadToBunnyCDN } = require('../../upload-helpers');
 
 function toBrandRequestResponse(doc, user) {
   if (!doc || !doc._id) return null;
@@ -37,6 +39,33 @@ function toBrandRequestResponse(doc, user) {
     updatedAt: doc.updatedAt,
     user: userPayload,
   };
+}
+
+/**
+ * POST /api/v1/brands/verification/document
+ * Upload a brand verification document (image or PDF) to Bunny CDN and return its URL.
+ * Multipart field name: "document".
+ */
+async function uploadVerificationDocument(req, res) {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, error: 'Document file is required (field: document).' });
+    }
+    const original = req.file.originalname || 'document';
+    const ext = (original.split('.').pop() || 'jpg').toLowerCase();
+    const safeExt = /^[a-z0-9]+$/i.test(ext) ? ext : 'jpg';
+    const filename = `brand-verification-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${safeExt}`;
+    const contentType = req.file.mimetype || 'application/octet-stream';
+    const { url } = await uploadToBunnyCDN(req.file.buffer, filename, 'brand-verification', contentType);
+    return res.status(201).json({ success: true, url });
+  } catch (err) {
+    console.error('POST /brands/verification/document error:', err);
+    const isConfigMissing =
+      err.message &&
+      (err.message.includes('Bunny CDN config missing') || err.message.includes('not configured'));
+    const status = isConfigMissing ? 503 : 500;
+    return res.status(status).json({ success: false, error: err.message || 'Failed to upload document.' });
+  }
 }
 
 /**
@@ -251,5 +280,6 @@ module.exports = {
   listVerificationRequests,
   getVerificationRequestById,
   updateVerificationStatus,
+  uploadVerificationDocument,
 };
 
