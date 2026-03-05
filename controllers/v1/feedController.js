@@ -188,6 +188,8 @@ async function getFeed(req, res) {
             name: '$authorDoc.name',
             username: '$authorDoc.username',
             profilePictureUrl: '$authorDoc.profilePictureUrl',
+            isBrand: '$authorDoc.isBrand',
+            brandName: '$authorDoc.brandName',
           },
           interests: {
             $map: {
@@ -227,6 +229,8 @@ async function getFeed(req, res) {
         if (!post) return null;
         const entry = entryByPostId[pid.toString()];
         const author = post.author || {};
+        const isBrand = author.isBrand === true;
+        const displayName = isBrand && author.brandName ? author.brandName : author.name ?? null;
         const authorId = author._id != null ? author._id.toString() : (author.id != null ? author.id : null);
         const authorWithId = authorId ? { ...author, _id: authorId, id: authorId } : author;
         const repostedByUserId = entry.repostedByUserId && entry.repostedByUserId.toString();
@@ -242,7 +246,7 @@ async function getFeed(req, res) {
         return {
           _id: post._id,
           author: authorWithId,
-          authorName: author.name ?? null,
+          authorName: displayName,
           authorUsername: author.username ?? null,
           authorPhotoUrl: author.profilePictureUrl ?? null,
           content: post.content,
