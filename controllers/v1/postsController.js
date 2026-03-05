@@ -181,7 +181,7 @@ async function getPost(req, res) {
     }
 
     const post = await Post.findById(id)
-      .populate('userId', 'name username profilePictureUrl')
+      .populate('userId', 'name username profilePictureUrl isBrand brandName')
       .populate('interests', 'name')
       .populate('taggedUserIds', 'name username profilePictureUrl')
       .lean();
@@ -192,10 +192,16 @@ async function getPost(req, res) {
 
     const taggedUsers = (post.taggedUserIds || []).map(toTaggedUser).filter(Boolean);
     const { taggedUserIds: ids, ...rest } = post;
+    const author = rest.userId || {};
+    const isBrand = author.isBrand === true;
+    const authorName = isBrand && author.brandName ? author.brandName : author.name ?? null;
     return res.status(200).json({
       success: true,
       post: {
         ...rest,
+        authorName,
+        authorIsBrand: isBrand,
+        authorBrandName: author.brandName ?? null,
         taggedUserIds: (ids || []).map((u) => (u && u._id ? u._id.toString() : u.toString())),
         taggedUsers,
       },

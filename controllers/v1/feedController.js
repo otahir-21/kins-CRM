@@ -323,7 +323,7 @@ async function getAllPosts(req, res) {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('userId', 'name username profilePictureUrl')
+      .populate('userId', 'name username profilePictureUrl isBrand brandName')
       .populate('interests', 'name')
       .populate('taggedUserIds', 'name username profilePictureUrl')
       .select('_id userId type content media poll interests taggedUserIds likesCount commentsCount sharesCount repostsCount viewsCount createdAt')
@@ -336,8 +336,14 @@ async function getAllPosts(req, res) {
       const taggedIds = tagged.map((u) => (u && u._id ? u._id.toString() : u.toString()));
       const taggedUsers = tagged.map(toTaggedUser).filter(Boolean);
       const { taggedUserIds: _, ...rest } = p;
+      const author = rest.userId || {};
+      const isBrand = author.isBrand === true;
+      const authorName = isBrand && author.brandName ? author.brandName : author.name ?? null;
       return {
         ...rest,
+        authorName,
+        authorIsBrand: isBrand,
+        authorBrandName: author.brandName ?? null,
         taggedUserIds: taggedIds,
         taggedUsers,
       };
