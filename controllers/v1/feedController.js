@@ -271,6 +271,15 @@ async function getFeed(req, res) {
       })
       .filter(Boolean);
 
+    if (ordered.length > 0) {
+      const sample = ordered[0];
+      console.log('FEED ITEM SAMPLE', {
+        id: sample._id?.toString?.() || String(sample._id),
+        author: sample.author,
+        authorName: sample.authorName,
+      });
+    }
+
     const total = await UserFeed.countDocuments({ userId });
 
     return res.status(200).json({
