@@ -23,7 +23,7 @@ const marketplaceListingSchema = new mongoose.Schema(
     locationCountry: { type: String, trim: true },
     status: {
       type: String,
-      enum: ['draft', 'active', 'sold', 'archived'],
+      enum: ['draft', 'pending', 'active', 'sold', 'archived'],
       default: 'active',
       index: true,
     },

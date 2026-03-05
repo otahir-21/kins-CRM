@@ -804,6 +804,40 @@ app.put('/api/moderation/keywords', async (req, res) => {
   }
 });
 
+// Get moderation/settings (keywords + marketplace requires approval)
+app.get('/api/moderation/settings', async (req, res) => {
+  try {
+    const doc = await ModerationSetting.findOne({ key: ModerationSetting.DOC_ID }).lean();
+    res.json({
+      success: true,
+      keywords: doc?.keywords || [],
+      marketplaceRequiresApproval: doc?.marketplaceRequiresApproval === true,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/moderation/settings:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update marketplace requires-approval setting
+app.put('/api/moderation/settings', async (req, res) => {
+  try {
+    const marketplaceRequiresApproval = req.body.marketplaceRequiresApproval === true || req.body.marketplaceRequiresApproval === 'true';
+    const doc = await ModerationSetting.findOneAndUpdate(
+      { key: ModerationSetting.DOC_ID },
+      { $set: { marketplaceRequiresApproval } },
+      { new: true, upsert: true }
+    ).lean();
+    res.json({
+      success: true,
+      marketplaceRequiresApproval: doc?.marketplaceRequiresApproval === true,
+    });
+  } catch (error) {
+    console.error('Error in PUT /api/moderation/settings:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== POSTS MODERATION ====================
 
 // Get posts (paginated - cost effective). Optional q = search in content. Pass userId to get only that user's posts.
@@ -1277,7 +1311,7 @@ app.get('/api/marketplace/listings', async (req, res) => {
     const status = (req.query.status || '').trim().toLowerCase();
 
     const filter = {};
-    if (status && ['draft', 'active', 'sold', 'archived'].includes(status)) {
+    if (status && ['draft', 'pending', 'active', 'sold', 'archived'].includes(status)) {
       filter.status = status;
     }
 

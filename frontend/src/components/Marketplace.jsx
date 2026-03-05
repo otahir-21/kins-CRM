@@ -4,6 +4,7 @@ import { apiService } from '../utils/api';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
+  { value: 'pending', label: 'Pending approval' },
   { value: 'active', label: 'Active' },
   { value: 'draft', label: 'Draft' },
   { value: 'sold', label: 'Sold' },
@@ -34,6 +35,9 @@ export default function Marketplace() {
     status: 'active',
   });
   const [saving, setSaving] = useState(false);
+  const [marketplaceRequiresApproval, setMarketplaceRequiresApproval] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -47,6 +51,20 @@ export default function Marketplace() {
     fetchListings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, status, searchDebounced]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await apiService.getModerationSettings();
+        setMarketplaceRequiresApproval(res.data?.marketplaceRequiresApproval === true);
+      } catch (e) {
+        console.error('Error loading moderation settings:', e);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const fetchListings = async () => {
     try {
@@ -113,6 +131,30 @@ export default function Marketplace() {
     } catch (err) {
       console.error('Error loading listing detail:', err);
       setError(err.response?.data?.error || err.message || 'Failed to load listing detail.');
+    }
+  };
+
+  const handleApprove = async (listing) => {
+    try {
+      setError(null);
+      await apiService.updateMarketplaceListing(listing.id, { status: 'active' });
+      fetchListings();
+    } catch (err) {
+      console.error('Error approving listing:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to approve listing.');
+    }
+  };
+
+  const handleToggleRequiresApproval = async (checked) => {
+    try {
+      setSettingsSaving(true);
+      await apiService.updateModerationSettings({ marketplaceRequiresApproval: checked });
+      setMarketplaceRequiresApproval(checked);
+    } catch (err) {
+      console.error('Error updating setting:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to update setting.');
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -204,6 +246,23 @@ export default function Marketplace() {
         >
           + New listing
         </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
+        <h2 className="text-sm font-semibold text-gray-800 mb-3">Marketplace approval</h2>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={marketplaceRequiresApproval}
+            disabled={settingsLoading || settingsSaving}
+            onChange={(e) => handleToggleRequiresApproval(e.target.checked)}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="text-sm text-gray-700">
+            Require manual approval for new listings (when on, app listings are created as Pending until you approve)
+          </span>
+        </label>
+        {settingsSaving && <span className="text-xs text-gray-500 ml-7 mt-1">Saving…</span>}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
@@ -345,6 +404,14 @@ export default function Marketplace() {
                       {listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                      {listing.status === 'pending' && (
+                        <button
+                          onClick={() => handleApprove(listing)}
+                          className="text-green-600 hover:text-green-800 font-medium"
+                        >
+                          Approve
+                        </button>
+                      )}
                       <button
                         onClick={() => openEdit(listing)}
                         className="text-primary-600 hover:text-primary-900"
@@ -427,6 +494,7 @@ export default function Marketplace() {
                     onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                   >
+                    <option value="pending">Pending</option>
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
                     <option value="sold">Sold</option>

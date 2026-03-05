@@ -240,6 +240,8 @@ export const apiService = {
   },
   getModerationKeywords: () => api.get('/api/moderation/keywords'),
   updateModerationKeywords: (keywords) => api.put('/api/moderation/keywords', { keywords }),
+  getModerationSettings: () => api.get('/api/moderation/settings'),
+  updateModerationSettings: (data) => api.put('/api/moderation/settings', data),
   
   getPostById: (postId) => {
     return api.get(`/api/posts/${postId}`);

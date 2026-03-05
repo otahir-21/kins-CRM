@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const MarketplaceListing = require('../../models/MarketplaceListing');
 const User = require('../../models/User');
+const ModerationSetting = require('../../models/ModerationSetting');
 
 function toListingResponse(doc, seller) {
   if (!doc || !doc._id) return null;
@@ -52,7 +53,7 @@ async function listListings(req, res) {
     const maxPrice = req.query.maxPrice != null ? parseFloat(req.query.maxPrice) : null;
 
     const filter = {};
-    if (status && ['draft', 'active', 'sold', 'archived'].includes(status)) {
+    if (status && ['draft', 'pending', 'active', 'sold', 'archived'].includes(status)) {
       filter.status = status;
     } else {
       filter.status = 'active';
@@ -174,6 +175,9 @@ async function createListing(req, res) {
     if (Array.isArray(tags)) {
       payload.tags = tags.map((t) => (t != null ? String(t).trim() : '')).filter((t) => t.length > 0);
     }
+
+    const settings = await ModerationSetting.findOne({ key: ModerationSetting.DOC_ID }).select('marketplaceRequiresApproval').lean();
+    payload.status = settings?.marketplaceRequiresApproval === true ? 'pending' : 'active';
 
     let doc = await MarketplaceListing.create(payload);
     doc = doc.toObject();
