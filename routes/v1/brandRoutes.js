@@ -5,6 +5,8 @@ const {
   submitVerification,
   getMyVerification,
   uploadVerificationDocument,
+  searchBrands,
+  getBrandById,
 } = require('../../controllers/v1/brandController');
 
 const router = express.Router();
@@ -17,6 +19,10 @@ const upload = multer({
     cb(null, allowed);
   },
 });
+
+// Public brand discovery APIs
+router.get('/search', searchBrands);
+router.get('/:brandId', getBrandById);
 
 router.use(verifyJwt);
 

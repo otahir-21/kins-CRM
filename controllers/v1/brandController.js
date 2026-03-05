@@ -41,6 +41,21 @@ function toBrandRequestResponse(doc, user) {
   };
 }
 
+function toBrandProfile(user) {
+  if (!user) return null;
+  const u = user._id ? user : { _id: user.id, ...user };
+  return {
+    id: u._id.toString(),
+    brandName: u.brandName ?? u.name ?? null,
+    brandSlug: u.brandSlug ?? null,
+    username: u.username ?? null,
+    profilePictureUrl: u.profilePictureUrl ?? null,
+    followerCount: u.followerCount ?? 0,
+    followingCount: u.followingCount ?? 0,
+    isVerified: u.isBrandVerified ?? false,
+  };
+}
+
 /**
  * POST /api/v1/brands/verification/document
  * Upload a brand verification document (image or PDF) to Bunny CDN and return its URL.
@@ -265,13 +280,88 @@ async function updateVerificationStatus(id, status, options = {}) {
   if (!doc) return null;
 
   if (status === 'approved') {
-    await User.findByIdAndUpdate(doc.userId, { isBrand: true, isBrandVerified: true });
+    const brandName = (doc.brandName || '').trim() || null;
+    const slug =
+      brandName &&
+      brandName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    await User.findByIdAndUpdate(doc.userId, {
+      isBrand: true,
+      isBrandVerified: true,
+      ...(brandName ? { brandName } : {}),
+      ...(slug ? { brandSlug: slug } : {}),
+    });
   }
 
   const user = await User.findById(doc.userId)
     .select('name username profilePictureUrl followerCount followingCount')
     .lean();
   return toBrandRequestResponse(doc, user);
+}
+
+/**
+ * GET /api/v1/brands/search?q=ave&limit=20&page=1
+ * Search approved brands by brandName or username.
+ */
+async function searchBrands(req, res) {
+  try {
+    const q = (req.query.q || '').trim();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const filter = { isBrand: true };
+
+    if (q) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(escaped, 'i');
+      filter.$or = [{ brandName: re }, { username: re }];
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('brandName brandSlug username profilePictureUrl followerCount followingCount isBrandVerified')
+        .sort({ brandName: 1, username: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      brands: users.map(toBrandProfile),
+      pagination: { page, limit, total, hasMore: skip + users.length < total },
+    });
+  } catch (err) {
+    console.error('GET /brands/search error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to search brands.' });
+  }
+}
+
+/**
+ * GET /api/v1/brands/:brandId
+ * Get a single brand profile.
+ */
+async function getBrandById(req, res) {
+  try {
+    const { brandId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(brandId)) {
+      return res.status(400).json({ success: false, error: 'Invalid brand ID.' });
+    }
+    const user = await User.findOne({ _id: brandId, isBrand: true })
+      .select('brandName brandSlug username profilePictureUrl followerCount followingCount isBrandVerified')
+      .lean();
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Brand not found.' });
+    }
+    return res.status(200).json({ success: true, brand: toBrandProfile(user) });
+  } catch (err) {
+    console.error('GET /brands/:brandId error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to get brand.' });
+  }
 }
 
 module.exports = {
@@ -281,5 +371,7 @@ module.exports = {
   getVerificationRequestById,
   updateVerificationStatus,
   uploadVerificationDocument,
+  searchBrands,
+  getBrandById,
 };
 

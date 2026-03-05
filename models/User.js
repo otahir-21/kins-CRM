@@ -31,6 +31,12 @@ const userSchema = new mongoose.Schema(
     followerCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
 
+    // brand profile (for verified brands / marketplace)
+    isBrand: { type: Boolean, default: false, index: true },
+    isBrandVerified: { type: Boolean, default: false },
+    brandName: { type: String, default: null },
+    brandSlug: { type: String, default: null },
+
     // FCM token for push (chat notifications, etc.)
     fcmToken: { type: String, default: null },
 
@@ -51,6 +57,7 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ provider: 1, providerUserId: 1 }, { unique: true });
 userSchema.index({ phoneNumber: 1 }, { sparse: true });
 userSchema.index({ email: 1 }, { sparse: true });
+userSchema.index({ brandName: 1 }, { sparse: true });
 userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('User', userSchema);
