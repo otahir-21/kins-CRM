@@ -17,7 +17,7 @@ const STATUS_COLORS = {
 export default function BrandVerification() {
   const [requests, setRequests] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, hasMore: false });
-  const [status, setStatus] = useState('pending');
+  const [status, setStatus] = useState(''); // empty = all statuses in CRM list
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [page, setPage] = useState(1);
@@ -139,6 +139,7 @@ export default function BrandVerification() {
             }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
           >
+            <option value="">All statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>

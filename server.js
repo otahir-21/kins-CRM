@@ -1094,7 +1094,7 @@ function toBrandVerificationResponse(doc, user) {
 
 app.get('/api/brands/verification', async (req, res) => {
   try {
-    const status = (req.query.status || 'pending').toLowerCase();
+    const status = (req.query.status || '').toLowerCase();
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const skip = (page - 1) * limit;
