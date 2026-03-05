@@ -114,8 +114,8 @@ export default function BrandVerification() {
     <div className="p-8 bg-gray-50 min-h-screen">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Brand Verification</h1>
-          <p className="text-gray-600 mt-2">Review and approve brand verification requests</p>
+          <h1 className="text-3xl font-bold text-gray-800">Verification</h1>
+          <p className="text-gray-600 mt-2">Review and approve verification requests</p>
         </div>
       </div>
 

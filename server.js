@@ -1494,7 +1494,14 @@ function toAdResponse(doc) {
 
 app.get('/api/ads/active', async (req, res) => {
   try {
-    const ads = await Ad.find({ isActive: true }).sort({ order: 1, createdAt: -1 }).lean();
+    const placement = (req.query.placement || 'home').toLowerCase();
+    const filter = { isActive: true };
+    if (placement === 'marketplace') {
+      filter.isForMarketplace = true;
+    } else if (placement === 'home') {
+      filter.$or = [{ isForMarketplace: { $exists: false } }, { isForMarketplace: false }];
+    }
+    const ads = await Ad.find(filter).sort({ order: 1, createdAt: -1 }).lean();
     res.json({ success: true, ads: ads.map(toAdResponse) });
   } catch (err) {
     console.error('GET /api/ads/active:', err);
@@ -1556,12 +1563,17 @@ app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
     const { cdnUrl } = await BunnyService.upload(buffer, fileName, 'ads');
     const title = (req.body.title || '').trim() || null;
     const isActive = req.body.isActive !== undefined ? (req.body.isActive === true || req.body.isActive === 'true') : true;
+    const isForMarketplace =
+      req.body.isForMarketplace !== undefined
+        ? req.body.isForMarketplace === true || req.body.isForMarketplace === 'true'
+        : false;
     const order = parseInt(req.body.order, 10);
     const ad = await Ad.create({
       imageUrl: cdnUrl,
       link,
       title,
       isActive,
+      isForMarketplace,
       order: Number.isNaN(order) ? 0 : order,
     });
     res.status(201).json({ success: true, ad: toAdResponse(ad.toObject()) });
@@ -1594,6 +1606,9 @@ app.put('/api/ads/:id', adsUpload.single('image'), async (req, res) => {
     if (req.body.link !== undefined) ad.link = String(req.body.link).trim();
     if (req.body.title !== undefined) ad.title = String(req.body.title).trim() || null;
     if (req.body.isActive !== undefined) ad.isActive = req.body.isActive === true || req.body.isActive === 'true';
+    if (req.body.isForMarketplace !== undefined) {
+      ad.isForMarketplace = req.body.isForMarketplace === true || req.body.isForMarketplace === 'true';
+    }
     const orderNum = parseInt(req.body.order, 10);
     if (!Number.isNaN(orderNum)) ad.order = orderNum;
     await ad.save();

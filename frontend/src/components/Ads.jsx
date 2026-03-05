@@ -8,7 +8,7 @@ export default function Ads() {
   const [showModal, setShowModal] = useState(false);
   const [editingAd, setEditingAd] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({ link: '', title: '', isActive: true, order: '' });
+  const [formData, setFormData] = useState({ link: '', title: '', isActive: true, isForMarketplace: false, order: '' });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -30,7 +30,7 @@ export default function Ads() {
   };
 
   const resetForm = () => {
-    setFormData({ link: '', title: '', isActive: true, order: '' });
+    setFormData({ link: '', title: '', isActive: true, isForMarketplace: false, order: '' });
     setImageFile(null);
     setImagePreview(null);
     setEditingAd(null);
@@ -47,6 +47,7 @@ export default function Ads() {
       link: ad.link || '',
       title: ad.title || '',
       isActive: ad.isActive !== false,
+      isForMarketplace: ad.isForMarketplace === true,
       order: ad.order != null ? String(ad.order) : '',
     });
     setImagePreview(ad.imageUrl || null);
@@ -77,6 +78,7 @@ export default function Ads() {
       fd.append('link', link);
       if (formData.title) fd.append('title', formData.title.trim());
       fd.append('isActive', formData.isActive);
+      fd.append('isForMarketplace', formData.isForMarketplace);
       if (formData.order !== '') fd.append('order', formData.order);
       if (imageFile) fd.append('image', imageFile);
 
@@ -148,6 +150,9 @@ export default function Ads() {
               </div>
               <div className="p-4">
                 {ad.title && <p className="font-medium text-gray-800 truncate">{ad.title}</p>}
+                <p className="text-xs text-gray-500 mt-1">
+                  {ad.isForMarketplace ? 'Placement: Marketplace' : 'Placement: Home'}
+                </p>
                 <a href={ad.link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 truncate block flex items-center gap-1 mt-1">
                   <ExternalLink className="w-3 h-3 flex-shrink-0" />
                   {ad.link}
@@ -210,6 +215,18 @@ export default function Ads() {
                     className="rounded border-gray-300"
                   />
                   <label htmlFor="isActive" className="text-sm text-gray-700">Active (show in app)</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isForMarketplace"
+                    checked={formData.isForMarketplace}
+                    onChange={(e) => setFormData((f) => ({ ...f, isForMarketplace: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="isForMarketplace" className="text-sm text-gray-700">
+                    Show in marketplace (instead of home)
+                  </label>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Order (optional, lower = first)</label>

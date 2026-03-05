@@ -35,7 +35,7 @@ const Sidebar = () => {
     { path: '/posts-moderation', icon: ShieldCheck, label: 'Content Moderation' },
     { path: '/broadcast', icon: Bell, label: 'Broadcast' },
     { path: '/onboarding', icon: BookOpen, label: 'Onboarding' },
-    { path: '/brands', icon: ShieldCheck, label: 'Brand Verification' },
+    { path: '/brands', icon: ShieldCheck, label: 'Verification' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
