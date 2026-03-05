@@ -93,7 +93,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (req, file, cb) => {
-    const allowed = /^image\/(jpeg|png|gif|webp)$/i.test(file.mimetype);
+    const mime = file.mimetype || '';
+    const isImageMime = /^image\/(jpeg|png|gif|webp)$/i.test(mime);
+    const ext = (file.originalname || '').split('.').pop()?.toLowerCase() || '';
+    const isImageExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    const allowed = isImageMime || (!mime && isImageExt);
     if (allowed) cb(null, true);
     else cb(new Error('Only images (JPEG, PNG, GIF, WebP) are allowed'), false);
   },
