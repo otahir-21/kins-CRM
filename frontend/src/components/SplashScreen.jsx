@@ -9,7 +9,7 @@ const SplashScreen = () => {
     const timer = setTimeout(() => {
       // Check if user is already authenticated
       if (authService.isAuthenticated()) {
-        navigate('/dashboard', { replace: true });
+        navigate('/analytics', { replace: true });
       } else {
         navigate('/login', { replace: true });
       }

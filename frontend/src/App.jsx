@@ -1,7 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
-import Dashboard from './components/Dashboard';
 import Users from './components/Users';
 import UserDetail from './components/UserDetail';
 import Interests from './components/Interests';
@@ -34,7 +33,8 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/analytics" replace />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/users" element={<Users />} />
           <Route path="/users/:userId" element={<UserDetail />} />
           <Route path="/users/:userId/notifications" element={<Notifications />} />
@@ -49,7 +49,6 @@ function App() {
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:groupId/chat" element={<GroupChat />} />
-          <Route path="/analytics" element={<Analytics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/" element={<Navigate to="/splash" replace />} />

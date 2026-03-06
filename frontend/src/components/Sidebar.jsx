@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  BarChart3, 
+import {
+  Users,
+  BarChart3,
   Settings,
   LogOut,
   Tag,
@@ -11,7 +10,7 @@ import {
   BookOpen,
   MessageCircle,
   Image as ImageIcon,
-  Bell
+  Bell,
 } from 'lucide-react';
 import { authService } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -25,7 +24,7 @@ const Sidebar = () => {
   };
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/users', icon: Users, label: 'Users' },
     { path: '/groups', icon: MessageCircle, label: 'Groups' },
     { path: '/ads', icon: ImageIcon, label: 'Ads' },
@@ -36,7 +35,6 @@ const Sidebar = () => {
     { path: '/broadcast', icon: Bell, label: 'Broadcast' },
     { path: '/onboarding', icon: BookOpen, label: 'Onboarding' },
     { path: '/brands', icon: ShieldCheck, label: 'Verification' },
-    { path: '/analytics', icon: BarChart3, label: 'Analytics' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
