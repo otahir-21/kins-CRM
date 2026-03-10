@@ -1574,7 +1574,11 @@ app.get('/api/ads/:id', async (req, res) => {
   }
 });
 
-const adsUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Legacy ads upload (CRM dashboard): allow larger files (50MB) for marketplace creatives
+const adsUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+});
 
 app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
   try {

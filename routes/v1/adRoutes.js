@@ -13,7 +13,8 @@ const {
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  // Increased to 50MB to allow larger marketplace ad images
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
 });
 
 // Public: mobile app fetches active ads (no auth)
