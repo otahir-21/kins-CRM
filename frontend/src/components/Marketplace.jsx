@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Tag, DollarSign, User as UserIcon } from 'lucide-react';
+import { Search, Tag, User as UserIcon } from 'lucide-react';
 import { apiService } from '../utils/api';
 
 const STATUS_OPTIONS = [
@@ -366,11 +366,7 @@ export default function Marketplace() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="inline-flex items-center">
-                        <DollarSign className="w-4 h-4 mr-1 text-gray-400" />
-                        {listing.price != null ? listing.price.toLocaleString() : '—'}{' '}
-                        {listing.currency || 'AED'}
-                      </span>
+                      {listing.price != null ? listing.price.toLocaleString() : '—'} {listing.currency || 'AED'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center">
