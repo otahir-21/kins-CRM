@@ -11,7 +11,7 @@ Deploy the backend so you can test the auth API (and the rest) from a public URL
 One project = backend (Node/Express) + frontend (React in `frontend/`). One Vercel deployment serves both. Build: `npm install && npm run build` (builds frontend into `frontend/dist`). Runtime: API at `/api/*`, auth at `/auth/*`; all other routes serve the CRM UI.
 
 - _Obsolete:_ Backend (API) at repo root — what you deployed. The root URL returns that JSON as the API “index”.
-- After deploy, open your URL (e.g. **https://kindash.vercel.app/**) for the CRM dashboard; `/api/*` and `/health` work as before.
+- After deploy, open your URL (e.g. **https://your-project.vercel.app/**) for the CRM dashboard; `/api/*` and `/health` work as before.
 
 ### Local development
 

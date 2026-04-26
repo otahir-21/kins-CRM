@@ -71,7 +71,7 @@ Used so the Flutter app can use Firestore/Storage for group chat. From Firebase 
 
 ## 7. Frontend build (only if UI is on a different host)
 
-Set **only when** the CRM UI is built and served from a different origin than the API (e.g. Vercel frontend + EC2 API).
+Set **only when** the CRM UI is built and served from a different origin than the API (e.g. S3/CloudFront + EC2 API, or any split hosting).
 
 | Variable | Required | Where to get it | Format / notes |
 |----------|----------|-----------------|----------------|
@@ -88,7 +88,7 @@ Used when running scripts or test clients against the deployed API (e.g. from yo
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| **BASE_URL** | — | API base URL, e.g. `http://16.16.96.232` or `https://your-api.vercel.app`. |
+| **BASE_URL** | — | API base URL (origin only), e.g. `https://api.example.com` (AWS ALB/custom domain) or `http://<ec2-public-ip>`. |
 | **API_BASE_URL** | — | Same idea in some scripts. |
 | **TOKEN** | — | JWT for authenticated script requests. |
 

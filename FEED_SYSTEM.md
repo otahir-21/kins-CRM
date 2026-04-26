@@ -299,7 +299,7 @@ Then create users with interests via `/api/v1/auth/login` and `/api/v1/me/intere
 ### Create a text post
 
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts \
+curl -X POST https://api.yourdomain.com/api/v1/posts \
   -H "Authorization: Bearer YOUR_JWT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -312,7 +312,7 @@ curl -X POST https://kindash.vercel.app/api/v1/posts \
 ### Create an image post
 
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts \
+curl -X POST https://api.yourdomain.com/api/v1/posts \
   -H "Authorization: Bearer YOUR_JWT" \
   -F "type=image" \
   -F "content=Check out this photo!" \
@@ -323,7 +323,7 @@ curl -X POST https://kindash.vercel.app/api/v1/posts \
 ### Get feed
 
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/feed?page=1&limit=20" \
+curl -X GET "https://api.yourdomain.com/api/v1/feed?page=1&limit=20" \
   -H "Authorization: Bearer YOUR_JWT"
 ```
 

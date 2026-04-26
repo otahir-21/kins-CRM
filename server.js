@@ -130,6 +130,11 @@ app.use('/auth', authRoutes);
 app.use('/interests', interestsMongoRoutes.dashboard);
 app.use('/api/interests', interestsMongoRoutes.dashboard);
 
+// Public v1 health (registered before the v1 router so it never hits JWT / interactions)
+app.get('/api/v1/health', (req, res) => {
+  res.json({ success: true, ok: true, scope: 'api-v1' });
+});
+
 // API v1: JWT auth, profile, interests — use this for mobile app (MongoDB only)
 app.use('/api/v1', v1Routes);
 
@@ -170,6 +175,7 @@ app.get('/api-info', (req, res) => {
       },
       v1: {
         base: `${baseUrl}/api/v1`,
+        health: { method: 'GET', url: `${baseUrl}/api/v1/health`, note: 'No auth; use from phone to verify same base URL as login' },
         authLogin: { method: 'POST', url: `${baseUrl}/api/v1/auth/login` },
         me: { method: 'GET', url: `${baseUrl}/api/v1/me` },
         meAbout: { method: 'PUT', url: `${baseUrl}/api/v1/me/about` },

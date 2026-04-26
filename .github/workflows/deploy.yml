@@ -10,10 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Set repository variable EC2_HOST to your public IPv4 when it changes (no Elastic IP).
+      # GitHub → Settings → Secrets and variables → Actions → Variables → EC2_HOST
       - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 16.16.96.232
+          host: ${{ vars.EC2_HOST != '' && vars.EC2_HOST || '16.16.96.232' }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22

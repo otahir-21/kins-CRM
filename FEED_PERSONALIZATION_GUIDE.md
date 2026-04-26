@@ -122,20 +122,20 @@ What happens:
 
 ```bash
 # User 1: Technologies
-curl -X POST https://kindash.vercel.app/api/v1/auth/login \
+curl -X POST https://api.yourdomain.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"provider":"phone","providerUserId":"+1111111111","name":"Tech User"}'
 
-curl -X PUT https://kindash.vercel.app/api/v1/me/interests \
+curl -X PUT https://api.yourdomain.com/api/v1/me/interests \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"interestIds": ["<technologies-interest-id>"]}'
 
 # User 2: Sports
-curl -X POST https://kindash.vercel.app/api/v1/auth/login \
+curl -X POST https://api.yourdomain.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"provider":"phone","providerUserId":"+2222222222","name":"Sports User"}'
 
-curl -X PUT https://kindash.vercel.app/api/v1/me/interests \
+curl -X PUT https://api.yourdomain.com/api/v1/me/interests \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"interestIds": ["<sports-interest-id>"]}'
 
@@ -148,11 +148,11 @@ curl -X PUT https://kindash.vercel.app/api/v1/me/interests \
 
 ```bash
 # Get User 1's feed (will see tech posts)
-curl -X GET https://kindash.vercel.app/api/v1/feed \
+curl -X GET https://api.yourdomain.com/api/v1/feed \
   -H "Authorization: Bearer $USER1_TOKEN"
 
 # Get User 2's feed (will see sports posts)
-curl -X GET https://kindash.vercel.app/api/v1/feed \
+curl -X GET https://api.yourdomain.com/api/v1/feed \
   -H "Authorization: Bearer $USER2_TOKEN"
 ```
 

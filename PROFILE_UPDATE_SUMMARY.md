@@ -80,7 +80,7 @@ All the following fields are now editable via `PUT /api/v1/me/about`:
 
 **Tested on:** 2026-02-11
 
-**Endpoint:** `https://kindash.vercel.app/api/v1/me/about`
+**Endpoint:** `https://api.yourdomain.com/api/v1/me/about`
 
 **Test Case:** Update all fields at once
 
@@ -145,7 +145,7 @@ city: u.city ?? null,
 const updateProfile = async (profileData) => {
   const token = await AsyncStorage.getItem('authToken');
   
-  const response = await fetch('https://kindash.vercel.app/api/v1/me/about', {
+  const response = await fetch('https://api.yourdomain.com/api/v1/me/about', {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,

@@ -1,33 +1,36 @@
 CURSOR MOBILE APP - API ENDPOINTS
 ==================================
 
-BASE URL: https://kindash.vercel.app/api/v1
+Production: use your AWS API HTTPS origin + /api/v1 (see DEPLOY_AWS.md, MOBILE_API.md).
+Placeholder below — replace api.yourdomain.com with your real host.
+
+BASE URL: https://api.yourdomain.com/api/v1
 
 AUTHENTICATION
 --------------
-POST   https://kindash.vercel.app/api/v1/auth/login
+POST   https://api.yourdomain.com/api/v1/auth/login
 
 USER PROFILE
 ------------
-GET    https://kindash.vercel.app/api/v1/me
-PUT    https://kindash.vercel.app/api/v1/me/about
-DELETE https://kindash.vercel.app/api/v1/me
+GET    https://api.yourdomain.com/api/v1/me
+PUT    https://api.yourdomain.com/api/v1/me/about
+DELETE https://api.yourdomain.com/api/v1/me
 
 INTERESTS
 ---------
-GET    https://kindash.vercel.app/api/v1/interests
-GET    https://kindash.vercel.app/api/v1/me/interests
-POST   https://kindash.vercel.app/api/v1/me/interests
+GET    https://api.yourdomain.com/api/v1/interests
+GET    https://api.yourdomain.com/api/v1/me/interests
+POST   https://api.yourdomain.com/api/v1/me/interests
 
 POSTS (NEW)
 -----------
-POST   https://kindash.vercel.app/api/v1/posts
-GET    https://kindash.vercel.app/api/v1/posts/:id
-DELETE https://kindash.vercel.app/api/v1/posts/:id
+POST   https://api.yourdomain.com/api/v1/posts
+GET    https://api.yourdomain.com/api/v1/posts/:id
+DELETE https://api.yourdomain.com/api/v1/posts/:id
 
 FEED (NEW)
 ----------
-GET    https://kindash.vercel.app/api/v1/feed?page=1&limit=20
+GET    https://api.yourdomain.com/api/v1/feed?page=1&limit=20
 
 
 AUTHENTICATION HEADER
@@ -49,7 +52,7 @@ EXAMPLE REQUESTS
 ----------------
 
 1. Login:
-   POST https://kindash.vercel.app/api/v1/auth/login
+   POST https://api.yourdomain.com/api/v1/auth/login
    Body: {
      "provider": "phone",
      "providerUserId": "+1234567890",
@@ -58,7 +61,7 @@ EXAMPLE REQUESTS
    }
 
 2. Create Text Post:
-   POST https://kindash.vercel.app/api/v1/posts
+   POST https://api.yourdomain.com/api/v1/posts
    Headers: Authorization: Bearer TOKEN
    Body: {
      "type": "text",
@@ -67,11 +70,11 @@ EXAMPLE REQUESTS
    }
 
 3. Get Feed:
-   GET https://kindash.vercel.app/api/v1/feed?page=1&limit=20
+   GET https://api.yourdomain.com/api/v1/feed?page=1&limit=20
    Headers: Authorization: Bearer TOKEN
 
 4. Set Interests:
-   POST https://kindash.vercel.app/api/v1/me/interests
+   POST https://api.yourdomain.com/api/v1/me/interests
    Headers: Authorization: Bearer TOKEN
    Body: {
      "interestIds": ["interestId1", "interestId2", "interestId3"]

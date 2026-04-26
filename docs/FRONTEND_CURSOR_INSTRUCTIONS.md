@@ -31,7 +31,7 @@ npm run dev
 ## 3. API base URL
 
 - **Dev:** No env needed. `VITE_API_URL` is unset, so the client uses same origin; Vite proxies `/api` to `http://localhost:3000`.
-- **Production / separate frontend:** Set `VITE_API_URL` to the full API base (e.g. `https://your-api.vercel.app`). Then all requests go to that base; no proxy.
+- **Production / separate frontend:** Set `VITE_API_URL` to the full API origin (no trailing slash), e.g. your **AWS** public URL `https://api.example.com` or EC2/ALB hostname. Then all requests go to that base; no proxy.
 
 Defined in `frontend/src/utils/api.js`:
 

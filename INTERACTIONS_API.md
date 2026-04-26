@@ -1,6 +1,6 @@
 # Interactions API - Quick Reference
 
-**Base URL:** `https://kindash.vercel.app/api/v1`
+**Base URL:** `https://api.yourdomain.com/api/v1`
 
 All endpoints require: `Authorization: Bearer YOUR_JWT_TOKEN`
 
@@ -254,13 +254,13 @@ onPostVisible(postId) {
 
 ### Like a Post
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/like \
+curl -X POST https://api.yourdomain.com/api/v1/posts/POST_ID/like \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ### Create Comment
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/comments \
+curl -X POST https://api.yourdomain.com/api/v1/posts/POST_ID/comments \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"content": "Great post!"}'
@@ -268,7 +268,7 @@ curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/comments \
 
 ### Reply to Comment
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/comments \
+curl -X POST https://api.yourdomain.com/api/v1/posts/POST_ID/comments \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"content": "I agree!", "parentCommentId": "COMMENT_ID"}'
@@ -276,7 +276,7 @@ curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/comments \
 
 ### Share Post as Repost
 ```bash
-curl -X POST https://kindash.vercel.app/api/v1/posts/POST_ID/share \
+curl -X POST https://api.yourdomain.com/api/v1/posts/POST_ID/share \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"shareType": "repost", "caption": "Check this out!"}'

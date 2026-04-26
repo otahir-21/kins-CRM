@@ -12,7 +12,7 @@ In the collection, click the collection name → **Variables**:
 
 | Variable   | Initial value                         | Current value |
 |-----------|---------------------------------------|----------------|
-| `baseUrl` | `https://kindash.vercel.app`         | Same or `http://localhost:3000` for local |
+| `baseUrl` | `https://api.yourdomain.com` (placeholder) | Your **AWS** public API origin (HTTPS, no `/api/v1`), e.g. ALB or custom domain — or `http://localhost:3000` for local |
 | `token`   | *(empty)*                             | Filled automatically after **Login** |
 | `userId`  | *(empty)*                             | Filled automatically after **Login** (your user id) |
 | `postId`  | *(empty)*                             | Set to a post ID when testing posts/likes/comments |

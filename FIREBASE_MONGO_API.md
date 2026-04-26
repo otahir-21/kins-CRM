@@ -7,7 +7,7 @@ Auth via **Firebase ID token** only. User profile and interests stored in **Mong
 ## Base URL
 
 - Local: `http://localhost:3000`
-- Production: `https://kindash.vercel.app`
+- Production: `https://api.yourdomain.com`
 
 ---
 
@@ -258,7 +258,7 @@ List interests selected by current user (auth required).
 ## Frontend example (fetch)
 
 ```javascript
-const BASE = 'https://kindash.vercel.app';
+const BASE = 'https://api.yourdomain.com';
 
 // After Firebase sign-in, get ID token (e.g. from firebase.auth().currentUser.getIdToken())
 const idToken = await firebase.auth().currentUser.getIdToken();

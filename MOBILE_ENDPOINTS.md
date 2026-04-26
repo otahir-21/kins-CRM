@@ -1,6 +1,8 @@
 # Cursor Mobile App - API Endpoints
 
-**Production Base URL:** `https://kindash.vercel.app/api/v1`
+**Production base URL:** Your AWS public API origin + `/api/v1` (see `DEPLOY_AWS.md` and `MOBILE_API.md`). Examples below use placeholder host **`https://api.yourdomain.com`** — replace it with your load balancer or custom domain.
+
+**Production Base URL (placeholder):** `https://api.yourdomain.com/api/v1`
 
 ---
 
@@ -8,7 +10,7 @@
 
 ### Login/Register
 ```
-POST https://kindash.vercel.app/api/v1/auth/login
+POST https://api.yourdomain.com/api/v1/auth/login
 ```
 
 **Body:**
@@ -31,12 +33,12 @@ POST https://kindash.vercel.app/api/v1/auth/login
 
 ### Get My Profile
 ```
-GET https://kindash.vercel.app/api/v1/me
+GET https://api.yourdomain.com/api/v1/me
 ```
 
 ### Update Profile (About You)
 ```
-PUT https://kindash.vercel.app/api/v1/me/about
+PUT https://api.yourdomain.com/api/v1/me/about
 ```
 
 **Body:**
@@ -55,7 +57,7 @@ PUT https://kindash.vercel.app/api/v1/me/about
 
 ### Delete Account
 ```
-DELETE https://kindash.vercel.app/api/v1/me
+DELETE https://api.yourdomain.com/api/v1/me
 ```
 
 ---
@@ -64,17 +66,17 @@ DELETE https://kindash.vercel.app/api/v1/me
 
 ### Get Master Interest List (Public)
 ```
-GET https://kindash.vercel.app/api/v1/interests
+GET https://api.yourdomain.com/api/v1/interests
 ```
 
 ### Get My Interests
 ```
-GET https://kindash.vercel.app/api/v1/me/interests
+GET https://api.yourdomain.com/api/v1/me/interests
 ```
 
 ### Set My Interests
 ```
-POST https://kindash.vercel.app/api/v1/me/interests
+POST https://api.yourdomain.com/api/v1/me/interests
 ```
 
 **Body:**
@@ -90,7 +92,7 @@ POST https://kindash.vercel.app/api/v1/me/interests
 
 ### Create Post
 ```
-POST https://kindash.vercel.app/api/v1/posts
+POST https://api.yourdomain.com/api/v1/posts
 ```
 
 **For Text Post (JSON):**
@@ -131,12 +133,12 @@ media: [file1, file2] (multipart files)
 
 ### Get Single Post
 ```
-GET https://kindash.vercel.app/api/v1/posts/{postId}
+GET https://api.yourdomain.com/api/v1/posts/{postId}
 ```
 
 ### Delete Post
 ```
-DELETE https://kindash.vercel.app/api/v1/posts/{postId}
+DELETE https://api.yourdomain.com/api/v1/posts/{postId}
 ```
 *(Only post author can delete)*
 
@@ -146,7 +148,7 @@ DELETE https://kindash.vercel.app/api/v1/posts/{postId}
 
 ### Get Personalized Feed
 ```
-GET https://kindash.vercel.app/api/v1/feed?page=1&limit=20
+GET https://api.yourdomain.com/api/v1/feed?page=1&limit=20
 ```
 
 **Query Parameters:**
@@ -155,8 +157,8 @@ GET https://kindash.vercel.app/api/v1/feed?page=1&limit=20
 
 **Example:**
 ```
-https://kindash.vercel.app/api/v1/feed?page=1&limit=20
-https://kindash.vercel.app/api/v1/feed?page=2&limit=10
+https://api.yourdomain.com/api/v1/feed?page=1&limit=20
+https://api.yourdomain.com/api/v1/feed?page=2&limit=10
 ```
 
 **Returns:**
@@ -236,7 +238,7 @@ The JWT token is returned from the login endpoint in the `token` field.
 
 ### 1. Initial Setup
 ```dart
-final String baseUrl = 'https://kindash.vercel.app/api/v1';
+final String baseUrl = 'https://api.yourdomain.com/api/v1';
 ```
 
 ### 2. Login Flow
@@ -365,4 +367,4 @@ For issues or questions:
 
 **Last Updated:** February 11, 2026  
 **API Version:** v1  
-**Base URL:** `https://kindash.vercel.app/api/v1`
+**Base URL:** `https://api.yourdomain.com/api/v1`

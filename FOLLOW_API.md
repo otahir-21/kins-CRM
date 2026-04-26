@@ -4,7 +4,7 @@ How the follow system works and how to use it from the mobile app.
 
 ## Base URL
 ```
-Production: https://kindash.vercel.app/api/v1
+Production: https://api.yourdomain.com/api/v1
 ```
 
 ## Authentication
@@ -53,7 +53,7 @@ Authorization: Bearer <your-jwt-token>
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID" \
+curl -X GET "https://api.yourdomain.com/api/v1/users/USER_B_ID" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -88,7 +88,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID" \
 
 **Request:**
 ```bash
-curl -X POST "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow" \
+curl -X POST "https://api.yourdomain.com/api/v1/users/USER_B_ID/follow" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -116,7 +116,7 @@ curl -X POST "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow" \
 
 **Request:**
 ```bash
-curl -X DELETE "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow" \
+curl -X DELETE "https://api.yourdomain.com/api/v1/users/USER_B_ID/follow" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -140,7 +140,7 @@ curl -X DELETE "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow" \
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow/status" \
+curl -X GET "https://api.yourdomain.com/api/v1/users/USER_B_ID/follow/status" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -174,7 +174,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/follow/status" \
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/followers?page=1&limit=20" \
+curl -X GET "https://api.yourdomain.com/api/v1/users/USER_B_ID/followers?page=1&limit=20" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -213,7 +213,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/followers?page=1&
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/following?page=1&limit=20" \
+curl -X GET "https://api.yourdomain.com/api/v1/users/USER_B_ID/following?page=1&limit=20" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -262,7 +262,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/users/USER_B_ID/following?page=1&
 const loadUserProfile = async (userId) => {
   const token = await AsyncStorage.getItem('authToken');
   const res = await fetch(
-    `https://kindash.vercel.app/api/v1/users/${userId}/follow/status`,
+    `https://api.yourdomain.com/api/v1/users/${userId}/follow/status`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
@@ -277,7 +277,7 @@ const loadUserProfile = async (userId) => {
 const follow = async (userId) => {
   const token = await AsyncStorage.getItem('authToken');
   const res = await fetch(
-    `https://kindash.vercel.app/api/v1/users/${userId}/follow`,
+    `https://api.yourdomain.com/api/v1/users/${userId}/follow`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -294,7 +294,7 @@ const follow = async (userId) => {
 const unfollow = async (userId) => {
   const token = await AsyncStorage.getItem('authToken');
   const res = await fetch(
-    `https://kindash.vercel.app/api/v1/users/${userId}/follow`,
+    `https://api.yourdomain.com/api/v1/users/${userId}/follow`,
     {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },

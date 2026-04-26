@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 /**
  * Test GET /api/v1/posts on production.
- * Usage: TOKEN=<your-jwt> node scripts/test-production-posts.js
- * Get a token by logging in via the app or Postman (POST /api/v1/auth/login).
+ * Usage: API_BASE_URL=https://your-api-host TOKEN=<your-jwt> node scripts/test-production-posts.js
+ * API_BASE_URL = origin only (no /api/v1). Get a token via the app or Postman (POST /api/v1/auth/login).
  */
-const BASE = process.env.API_BASE_URL || 'https://kindash.vercel.app';
+const BASE = process.env.API_BASE_URL;
 const token = process.env.TOKEN;
+
+if (!BASE) {
+  console.error(
+    'Missing API_BASE_URL. Example: API_BASE_URL=https://api.example.com TOKEN=<jwt> node scripts/test-production-posts.js'
+  );
+  process.exit(1);
+}
 
 if (!token) {
   console.error('Missing TOKEN. Usage: TOKEN=<jwt> node scripts/test-production-posts.js');

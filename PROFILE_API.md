@@ -4,7 +4,7 @@ Complete guide for managing user profiles in Kindash.
 
 ## Base URL
 ```
-Production: https://kindash.vercel.app/api/v1
+Production: https://api.yourdomain.com/api/v1
 ```
 
 ## Authentication
@@ -35,7 +35,7 @@ Authorization: Bearer <your-jwt-token>
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/me" \
+curl -X GET "https://api.yourdomain.com/api/v1/me" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -91,7 +91,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/me" \
 
 **Request:**
 ```bash
-curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
+curl -X PUT "https://api.yourdomain.com/api/v1/me/about" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -127,7 +127,7 @@ curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
 
 **Partial Update (Only Update Some Fields):**
 ```bash
-curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
+curl -X PUT "https://api.yourdomain.com/api/v1/me/about" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -137,7 +137,7 @@ curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
 
 **Clear a Field (Set to null):**
 ```bash
-curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
+curl -X PUT "https://api.yourdomain.com/api/v1/me/about" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,7 +173,7 @@ curl -X PUT "https://kindash.vercel.app/api/v1/me/about" \
 
 **Request:**
 ```bash
-curl -X POST "https://kindash.vercel.app/api/v1/me/interests" \
+curl -X POST "https://api.yourdomain.com/api/v1/me/interests" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -238,7 +238,7 @@ curl -X POST "https://kindash.vercel.app/api/v1/me/interests" \
 
 **Request:**
 ```bash
-curl -X GET "https://kindash.vercel.app/api/v1/me/interests" \
+curl -X GET "https://api.yourdomain.com/api/v1/me/interests" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -271,7 +271,7 @@ curl -X GET "https://kindash.vercel.app/api/v1/me/interests" \
 
 **Request:**
 ```bash
-curl -X DELETE "https://kindash.vercel.app/api/v1/me" \
+curl -X DELETE "https://api.yourdomain.com/api/v1/me" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -295,7 +295,7 @@ const useUpdateProfile = () => {
   const updateProfile = async (profileData) => {
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const response = await fetch('https://kindash.vercel.app/api/v1/me/about', {
+      const response = await fetch('https://api.yourdomain.com/api/v1/me/about', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -369,7 +369,7 @@ const EditProfileScreen = () => {
 
 ```dart
 class ProfileService {
-  final String baseUrl = 'https://kindash.vercel.app/api/v1';
+  final String baseUrl = 'https://api.yourdomain.com/api/v1';
   
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
     final token = await storage.read(key: 'authToken');
@@ -435,7 +435,7 @@ Upload to your own image hosting service (AWS S3, Cloudinary, etc.) and then upd
 const imageUrl = await uploadToImageService(imageFile);
 
 // 2. Update profile with URL
-await fetch('https://kindash.vercel.app/api/v1/me/about', {
+await fetch('https://api.yourdomain.com/api/v1/me/about', {
   method: 'PUT',
   headers: {
     'Authorization': `Bearer ${token}`,

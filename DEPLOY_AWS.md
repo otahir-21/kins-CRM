@@ -4,6 +4,20 @@ Run the backend (API) on AWS so you can use the auth API and the rest from a pub
 
 ---
 
+## GitHub Actions → EC2 (this repo)
+
+Workflow: **`.github/workflows/deploy.yml`** (on push to **`main`**). It SSHs as **`ubuntu`** to the configured **`host`**, then `git pull`, `npm install`, `npm run build`, and **`pm2 restart kins-api`** (or starts `server.js` if missing).
+
+| Item | Notes |
+|------|--------|
+| **Secret `EC2_SSH_KEY`** | Private half of the key pair attached at launch (e.g. **kins-prod-key**). Paste the full PEM into GitHub → *Settings → Secrets and variables → Actions*. |
+| **`EC2_HOST` (repository variable)** | **`.github/workflows/deploy.yml`** uses **`vars.EC2_HOST`** when non-empty, otherwise **`16.16.96.232`**. GitHub → **Settings → Secrets and variables → Actions → Variables** → add **`EC2_HOST`** = public IPv4 when it changes (avoids editing the workflow). |
+| **SSH still needs the right IP** | The variable must match the instance you SSH into. After **Stop/Start** without an Elastic IP, update **`EC2_HOST`** in GitHub. |
+| **Elastic IP** | If the console shows **no Elastic IP** and only an **auto-assigned public IP**, that address can change when the instance is stopped and started. For a stable URL for **mobile apps** and CI, allocate an **Elastic IP** in EC2 and associate it with this instance (or use an **ALB + custom domain** with HTTPS). |
+| **Region** | Example: **eu-north-1** instances often get a public DNS name like `ec2-16-16-96-232.eu-north-1.compute.amazonaws.com` (still tied to the same public IPv4; it changes with the IP unless you use Elastic IP + DNS you control). |
+
+---
+
 ## Quick health check
 
 After the app is running on your EC2 (e.g. `http://16.16.96.232`), point the frontend and scripts to that URL:
@@ -15,9 +29,12 @@ Verify the API is up:
 
 ```bash
 curl http://16.16.96.232/health
+curl http://16.16.96.232:3000/health
 ```
 
-You should get a JSON response (e.g. `{"ok":true}` or similar). If you get "Connection refused", the Node process is not listening on that host/port or the security group is blocking inbound traffic.
+You should get a JSON response (e.g. `{"ok":true}` or similar). **Port 80 vs 3000:** If **`/health` on port 80** works from your laptop but **port 3000 times out**, the security group allows **80** (often via **nginx** reverse proxy to Node on **3000**). In that case Flutter **`API_V1_BASE_URL`** should be **`http://<public-ip>/api/v1`** (no `:3000`). If only **3000** is open, use **`http://<public-ip>:3000/api/v1`** instead. Example nginx config: **`deploy/ec2-nginx-kins.conf.example`**.
+
+If you get "Connection refused" on both, the Node process is not running, nginx is not configured, or the security group is blocking inbound traffic.
 
 ### "Endpoint not found" in the CRM UI
 
@@ -102,6 +119,7 @@ Use **AWS Systems Manager → Parameter Store** (or Lambda environment config, o
 5. **Start command:** `npm install && node server.js` (or as in `package.json`).
 6. **Health:** Ensure `/health` returns 200 so the platform marks the deploy OK.
 7. **Frontend (optional):** Build (e.g. `npm run build` → `frontend/dist`) and host on **S3 + CloudFront** or same origin; set `VITE_API_URL` (or equivalent) to your API base URL.
+8. **Mobile app (Flutter, etc.):** Set `API_V1_BASE_URL` (or your app’s equivalent) to **`https://<your-public-host>/api/v1`**, using the same HTTPS origin as the ALB or CloudFront distribution. Phones must be able to open TLS to that host (security group allows 443, ACM certificate matches the hostname). See **`MOBILE_API.md`** for paths; doc examples use a placeholder host you must replace.
 
 After deploy, **test auth** with:
 

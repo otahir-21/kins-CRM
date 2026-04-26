@@ -7,7 +7,7 @@ Give this to your frontend or mobile team to integrate phone login.
 ## Base URL
 
 ```
-https://kindash.vercel.app
+https://api.yourdomain.com
 ```
 
 (No trailing slash. Use the same for all auth and API calls.)
@@ -27,7 +27,7 @@ After success, call other APIs with header: **`Authorization: Bearer <accessToke
 
 **Request**
 
-- **URL:** `https://kindash.vercel.app/auth/send-otp`
+- **URL:** `https://api.yourdomain.com/auth/send-otp`
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Body (JSON):**
@@ -63,7 +63,7 @@ Use E.164 format (e.g. `+971...`, `+1...`, `+44...`). You can send with or witho
 
 **Request**
 
-- **URL:** `https://kindash.vercel.app/auth/verify-otp`
+- **URL:** `https://api.yourdomain.com/auth/verify-otp`
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Body (JSON):**
@@ -120,7 +120,7 @@ Wrong code or code expired. Ask user to re-enter or request a new OTP (after coo
 ### JavaScript / React (fetch)
 
 ```javascript
-const BASE_URL = 'https://kindash.vercel.app';
+const BASE_URL = 'https://api.yourdomain.com';
 
 // Step 1: Send OTP
 async function sendOtp(phone) {
@@ -159,7 +159,7 @@ async function verifyOtp(phone, code) {
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-const String baseUrl = 'https://kindash.vercel.app';
+const String baseUrl = 'https://api.yourdomain.com';
 
 Future<void> sendOtp(String phone) async {
   final res = await http.post(
@@ -203,7 +203,7 @@ const res = await fetch(`${BASE_URL}/api/users/${userId}`, {
 
 | Item | Value |
 |------|--------|
-| **Base URL** | `https://kindash.vercel.app` |
+| **Base URL** | `https://api.yourdomain.com` |
 | **Send OTP** | `POST /auth/send-otp` — body: `{ "phone": "+..." }` |
 | **Verify OTP** | `POST /auth/verify-otp` — body: `{ "phone": "+...", "code": "123456" }` |
 | **On success** | Store `accessToken` and `user.id`; use `Authorization: Bearer <accessToken>` for API calls; use `user.id` in paths like `/api/users/:userId` |
