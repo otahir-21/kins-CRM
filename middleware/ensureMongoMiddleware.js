@@ -8,8 +8,8 @@ const { connectDB } = require('../lib/mongodb');
 
 async function ensureMongo(req, res, next) {
   try {
-    // Skip for health check
-    if (req.path === '/health') {
+    // Skip for health checks (no DB; used by load balancers and mobile reachability)
+    if (req.path === '/health' || req.path === '/api/v1/health') {
       return next();
     }
 
