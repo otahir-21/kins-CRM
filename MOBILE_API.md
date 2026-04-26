@@ -34,7 +34,17 @@ This backend mounts **mobile (JWT) APIs** under **`/api/v1`** (see `server.js`).
 
 **Critical — port:** `http://16.16.96.232` means **port 80**. The Node app defaults to **`PORT=3000`** behind the scenes; production EC2 often uses **nginx on 80 → 3000** (see **`deploy/ec2-nginx-kins.conf.example`**). From the internet, **`curl http://<ip>/health`** may work while **`:3000` times out** if the security group only allows **80** — then use **`http://<ip>/api/v1`** (no port). If **3000** is open and you do not use nginx, use **`http://<ip>:3000/api/v1`** for both constants.
 
-**iOS:** **`http://` to a raw IP** is often blocked by **App Transport Security** unless `Info.plist` allows that domain, or you terminate **HTTPS** (recommended: ALB + ACM + DNS name, not bare IP).
+### iOS ATS, TLS, and where config lives
+
+- **This repo** is the **backend API only** — there is **no** `ios/Runner/Info.plist` here. **ATS** (App Transport Security) is configured in your **Flutter** project: **`ios/Runner/Info.plist`** (or build settings in Xcode).
+- **`API_V1_BASE_URL`** defaults (e.g. **`http://16.16.96.232/api/v1`**) use **port 80** on the path; you only add **`:3000`** if you put it in the URL string. The HTTP client then calls **`/auth/login`**, **`/me`**, etc. on that base.
+- **Reachability test:** The app might **not** call **`/api/v1/health`** for you. On the **same iPhone**, open Safari to **`http://<your-host>/api/v1/health`** (same host as in `API_V1_BASE_URL`). That confirms the device can reach **nginx/API** over HTTP.
+- **Three different failure types:**
+  1. **`secureConnect` / connection timeout** — TLS or TCP never completed (wrong host, **`https://`** when only **HTTP** is served, firewall, etc.). **Not** a JSON body from this API.
+  2. **`GET …/api/v1/health` → `{"ok":true}`** — network path to the API works; it does **not** prove **MongoDB** is connected.
+  3. **`POST …/auth/login` → 5xx / “Database connection unavailable”** — server reached you, but **Atlas / `MONGODB_URI` / IP whitelist** (or similar) is wrong; health can still be **200**.
+- **ATS without exceptions:** Apple’s default often **blocks cleartext HTTP** to non-local hosts. For **dev**, a **narrow** `NSAppTransportSecurity` exception for your API host is common. For **production**, prefer **HTTPS + a domain** (e.g. ALB + ACM), not a bare IP.
+- **When reporting an error**, include: **HTTP status**, **response body** (if any), and the **exact** `API_V1_BASE_URL` / **`--dart-define`** / Xcode scheme used for that build — that separates **network/TLS** from **DB / 503**.
 
 **“Why does it show …?” (common):** Opening **`/api-info`** or a wrong path returns **JSON** (API discovery or `Endpoint not found`). Opening **`/`** with a built CRM returns the **React SPA**. If the app or browser “looks wrong”, compare the **exact URL** and **port** to the table above.
 
