@@ -2,12 +2,30 @@ const mongoose = require('mongoose');
 const UserFeed = require('../../models/UserFeed');
 const Post = require('../../models/Post');
 const User = require('../../models/User');
+const { getSelectedBackend } = require('../../services/data/backendSelector');
+const firebaseFeedService = require('../../services/firebaseFeedService');
 
 /**
  * Get user feed (paginated) with isLiked, userVote, and pollResults embedded.
  * Single GET /feed response — no N+1 calls to like/status or poll results.
  */
 async function getFeed(req, res) {
+  if (getSelectedBackend('feed') === 'firebase') {
+    try {
+      const userId = req.userId;
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+      const result = await firebaseFeedService.getHomeFeed(String(userId), { page, limit });
+      return res.status(200).json({
+        success: true,
+        feed: result.feed,
+        pagination: result.pagination,
+      });
+    } catch (err) {
+      console.error('GET /feed (firebase) error:', err);
+      return res.status(500).json({ success: false, error: err.message || 'Failed to fetch feed.' });
+    }
+  }
   try {
     const userId = req.userId;
     const currentUserObjectId = new mongoose.Types.ObjectId(userId);
@@ -314,6 +332,21 @@ function toTaggedUser(doc) {
 }
 
 async function getAllPosts(req, res) {
+  if (getSelectedBackend('feed') === 'firebase') {
+    try {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+      const result = await firebaseFeedService.getAllPostsPaginated({ page, limit });
+      return res.status(200).json({
+        success: true,
+        posts: result.posts,
+        pagination: result.pagination,
+      });
+    } catch (err) {
+      console.error('GET /posts (all, firebase) error:', err);
+      return res.status(500).json({ success: false, error: err.message || 'Failed to fetch posts.' });
+    }
+  }
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));

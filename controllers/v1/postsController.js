@@ -4,6 +4,8 @@ const User = require('../../models/User');
 const BunnyService = require('../../services/BunnyService');
 const FeedService = require('../../services/FeedService');
 const mongoose = require('mongoose');
+const { getSelectedBackend } = require('../../services/data/backendSelector');
+const firebaseFeedService = require('../../services/firebaseFeedService');
 
 const MAX_TAGGED_USERS = 30;
 
@@ -25,6 +27,14 @@ function toTaggedUser(doc) {
  */
 async function createPost(req, res) {
   try {
+    if (getSelectedBackend('feed') === 'firebase') {
+      const created = await firebaseFeedService.createPostFromMultipart(req);
+      if (created.error) {
+        return res.status(created.error.status).json(created.error.body);
+      }
+      return res.status(created.response.status).json(created.response.body);
+    }
+
     const { type, content, poll, interestIds, taggedUserIds: rawTagged } = req.body;
     const userId = req.userId;
 
@@ -176,6 +186,32 @@ async function getPost(req, res) {
   try {
     const { id } = req.params;
 
+    if (getSelectedBackend('feed') === 'firebase') {
+      const row = await firebaseFeedService.getSinglePostForV1(id);
+      if (!row) {
+        return res.status(404).json({ success: false, error: 'Post not found.' });
+      }
+      const taggedUsers = row.taggedUsers || [];
+      const {
+        taggedUserIds: tids,
+        authorName,
+        authorIsBrand,
+        authorBrandName,
+        ...rest
+      } = row;
+      return res.status(200).json({
+        success: true,
+        post: {
+          ...rest,
+          authorName,
+          authorIsBrand,
+          authorBrandName,
+          taggedUserIds: tids || [],
+          taggedUsers,
+        },
+      });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
@@ -221,6 +257,21 @@ async function deletePost(req, res) {
     const { id } = req.params;
     const userId = req.userId;
 
+    if (getSelectedBackend('feed') === 'firebase') {
+      const result = await firebaseFeedService.softDeletePostForUser(id, String(userId));
+      if (result.code === 'NOT_FOUND') {
+        return res.status(404).json({ success: false, error: 'Post not found.' });
+      }
+      if (result.code === 'FORBIDDEN') {
+        return res.status(403).json({
+          success: false,
+          error: 'Not authorized to delete this post.',
+          code: 'NOT_POST_AUTHOR',
+        });
+      }
+      return res.status(200).json({ success: true, message: 'Post deleted successfully.' });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });
     }
@@ -264,6 +315,16 @@ async function getMyPosts(req, res) {
     const rawUserId = req.userId;
     if (!rawUserId) {
       return res.status(401).json({ success: false, error: 'Not authenticated.' });
+    }
+    if (getSelectedBackend('feed') === 'firebase') {
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+      const result = await firebaseFeedService.getMyPostsPaginated(String(rawUserId), { page, limit });
+      return res.status(200).json({
+        success: true,
+        posts: result.posts,
+        pagination: result.pagination,
+      });
     }
     const userId = mongoose.Types.ObjectId.isValid(rawUserId) ? new mongoose.Types.ObjectId(String(rawUserId)) : null;
     if (!userId) {
@@ -323,6 +384,14 @@ async function reportPost(req, res) {
     const { postId } = req.params;
     const userId = req.userId;
     const { reason } = req.body || {};
+
+    if (getSelectedBackend('feed') === 'firebase') {
+      const ok = await firebaseFeedService.incrementReportCount(postId);
+      if (!ok) {
+        return res.status(404).json({ success: false, error: 'Post not found.' });
+      }
+      return res.status(200).json({ success: true, message: 'Post reported.', reported: true });
+    }
 
     if (!mongoose.Types.ObjectId.isValid(postId)) {
       return res.status(400).json({ success: false, error: 'Invalid post ID.' });

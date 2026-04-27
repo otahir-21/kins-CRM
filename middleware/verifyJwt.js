@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { getUserDataProvider } = require('../services/data/userDataProvider');
 
 /**
  * Verify JWT and attach req.user (MongoDB user) and req.userId.
@@ -26,7 +26,8 @@ async function verifyJwt(req, res, next) {
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Invalid token payload.' });
     }
-    const user = await User.findById(userId).lean();
+    const userDataProvider = getUserDataProvider();
+    const user = await userDataProvider.findById(userId);
     if (!user) {
       return res.status(401).json({ success: false, error: 'User not found.' });
     }

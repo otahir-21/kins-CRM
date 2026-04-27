@@ -78,15 +78,67 @@ const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
 const { connectDB } = require('./config/db');
 const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
+const { firebaseCrmFallback } = require('./middleware/firebaseCrmFallbackMiddleware');
 const { requestTimingMiddleware } = require('./middleware/requestTimingMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
 const v1Routes = require('./routes/v1');
+const { getSelectedBackend } = require('./services/data/backendSelector');
+const firebaseUsersService = require('./services/firebaseUsersService');
+const firebaseGroupsService = require('./services/firebaseGroupsService');
+const firebaseAdsService = require('./services/firebaseAdsService');
+const firebaseMarketplaceService = require('./services/firebaseMarketplaceService');
+const firebaseSurveysService = require('./services/firebaseSurveysService');
+const firebaseOnboardingService = require('./services/firebaseOnboardingService');
+const firebaseModerationService = require('./services/firebaseModerationService');
+const firebasePostsService = require('./services/firebasePostsService');
+const firebaseVerificationService = require('./services/firebaseVerificationService');
+const firebaseNotificationsService = require('./services/firebaseNotificationsService');
 
 if (process.env.MONGODB_URI) {
   connectDB().catch((err) => console.error('MongoDB connection failed:', err.message));
 }
 
 const app = express();
+
+function useFirebaseUsersBackend() {
+  return getSelectedBackend('users') === 'firebase';
+}
+
+function useFirebaseGroupsBackend() {
+  return getSelectedBackend('groups') === 'firebase';
+}
+
+function useFirebaseAdsBackend() {
+  return getSelectedBackend('ads') === 'firebase';
+}
+
+function useFirebaseMarketplaceBackend() {
+  return getSelectedBackend('marketplace') === 'firebase';
+}
+
+function useFirebaseSurveysBackend() {
+  return getSelectedBackend('surveys') === 'firebase';
+}
+
+function useFirebaseOnboardingBackend() {
+  return getSelectedBackend('onboarding') === 'firebase';
+}
+
+function useFirebaseModerationBackend() {
+  return getSelectedBackend('moderation') === 'firebase';
+}
+
+function useFirebasePostsBackend() {
+  return getSelectedBackend('posts') === 'firebase';
+}
+
+function useFirebaseVerificationBackend() {
+  return getSelectedBackend('verification') === 'firebase';
+}
+
+function useFirebaseNotificationsBackend() {
+  return getSelectedBackend('notifications') === 'firebase';
+}
 
 // Multer: in-memory storage for uploads (no disk write)
 const upload = multer({
@@ -110,6 +162,10 @@ app.use(express.json());
 
 // Request timing: log total request duration (ms) for performance auditing
 app.use(requestTimingMiddleware);
+
+// Partial Firebase migration: empty CRM stubs when DATA_BACKEND_DEFAULT=firebase
+// but a scoped domain is still mongo (see isFullFirebaseMigration).
+app.use(firebaseCrmFallback);
 
 // Ensure MongoDB connection for all routes (critical for Vercel serverless)
 app.use(ensureMongo);
@@ -249,6 +305,23 @@ app.get('/api/user-interests', async (req, res) => {
     const userId = req.query.userId;
     const details = req.query.details === 'true';
     if (!userId) return res.status(400).json({ success: false, error: 'userId query required' });
+    if (useFirebaseUsersBackend()) {
+      const ids = await firebaseUsersService.getUserInterests(userId);
+      const idList = Array.isArray(ids) ? ids.map((i) => String(i || '').trim()).filter(Boolean) : [];
+      if (!details || idList.length === 0) {
+        return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
+      }
+      const Interest = require('./models/Interest');
+      const mongoose = require('mongoose');
+      const objectIds = idList
+        .filter((id) => id.length === 24 && /^[a-fA-F0-9]{24}$/.test(id) && mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
+      const interests = objectIds.length > 0 ? await Interest.find({ _id: { $in: objectIds } }).lean() : [];
+      const nameById = {};
+      interests.forEach((i) => { nameById[i._id.toString()] = i.name != null ? String(i.name).trim() : '(Unknown)'; });
+      const data = idList.map((id) => ({ id, name: nameById[id] || '(Unknown)' }));
+      return res.json({ success: true, count: data.length, data });
+    }
     const ids = await getUserInterestsIds(userId);
     const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
     if (!details || idList.length === 0) {
@@ -273,7 +346,9 @@ app.get('/api/crm/user/:userId/interests', async (req, res) => {
   try {
     const { userId } = req.params;
     const details = req.query.details === 'true';
-    const ids = await getUserInterestsIds(userId);
+    const ids = useFirebaseUsersBackend()
+      ? await firebaseUsersService.getUserInterests(userId)
+      : await getUserInterestsIds(userId);
     const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
     if (!details || idList.length === 0) {
       return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
@@ -297,6 +372,20 @@ app.get('/api/crm/user/:userId/posts', async (req, res) => {
   try {
     const { userId } = req.params;
     const { limit = 20, startAfter, status = 'active' } = req.query;
+    if (useFirebasePostsBackend()) {
+      const result = await firebasePostsService.listPosts({
+        limit: Math.min(parseInt(limit) || 20, 50),
+        status: status || 'active',
+        q: '',
+        userId: typeof userId === 'string' ? userId.trim() : null,
+      });
+      return res.json({
+        success: true,
+        data: result.posts,
+        nextPageToken: result.nextPageToken,
+        hasMore: result.hasMore,
+      });
+    }
     const result = await getPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
@@ -320,6 +409,12 @@ app.get('/api/crm/user/:userId/posts', async (req, res) => {
 app.get('/api/users', async (req, res) => {
   try {
     const { complete } = req.query;
+    if (useFirebaseUsersBackend()) {
+      const users = complete === 'true'
+        ? await Promise.all((await firebaseUsersService.getAllUsers()).map((u) => firebaseUsersService.getCompleteUserProfile(u.id)))
+        : await firebaseUsersService.getAllUsers();
+      return res.json({ success: true, count: users.length, data: users.filter(Boolean) });
+    }
     
     if (complete === 'true') {
       const users = await getAllUsersComplete();
@@ -367,6 +462,11 @@ const userDetailRouter = express.Router({ mergeParams: true });
 userDetailRouter.get('/documents', async (req, res) => {
   try {
     const { userId } = req.params;
+    if (useFirebaseUsersBackend()) {
+      const user = await firebaseUsersService.getCompleteUserProfile(userId);
+      const documents = user?.documents || [];
+      return res.json({ success: true, count: documents.length, data: documents });
+    }
     const documents = await getUserDocuments(userId);
     res.json({ success: true, count: documents.length, data: documents });
   } catch (error) {
@@ -379,7 +479,9 @@ userDetailRouter.get('/interests', async (req, res) => {
   try {
     const { userId } = req.params;
     const details = req.query.details === 'true';
-    const ids = await getUserInterestsIds(userId);
+    const ids = useFirebaseUsersBackend()
+      ? await firebaseUsersService.getUserInterests(userId)
+      : await getUserInterestsIds(userId);
     const idList = Array.isArray(ids) ? ids.map((i) => (i != null ? String(i).trim() : '')).filter(Boolean) : [];
     if (!details || idList.length === 0) {
       return res.json({ success: true, count: idList.length, data: details ? idList.map((id) => ({ id, name: '(Unknown)' })) : idList });
@@ -404,6 +506,20 @@ userDetailRouter.get('/posts', async (req, res) => {
   try {
     const { userId } = req.params;
     const { limit = 20, startAfter, status = 'active' } = req.query;
+    if (useFirebasePostsBackend()) {
+      const result = await firebasePostsService.listPosts({
+        limit: Math.min(parseInt(limit) || 20, 50),
+        status: status || 'active',
+        q: '',
+        userId: typeof userId === 'string' ? userId.trim() : null,
+      });
+      return res.json({
+        success: true,
+        data: result.posts,
+        nextPageToken: result.nextPageToken,
+        hasMore: result.hasMore,
+      });
+    }
     const result = await getPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
@@ -432,7 +548,9 @@ userDetailRouter.get('/notifications', async (req, res) => {
     if (limit) options.limit = parseInt(limit);
     if (unreadOnly === 'true') options.unreadOnly = true;
     if (type) options.type = type;
-    const notifications = await getUserNotifications(userId, options);
+    const notifications = useFirebaseNotificationsBackend()
+      ? await firebaseNotificationsService.getUserNotifications(userId, options)
+      : await getUserNotifications(userId, options);
     res.json({ success: true, count: notifications.length, data: notifications });
   } catch (error) {
     console.error('Error in GET /api/users/:userId/notifications:', error);
@@ -443,7 +561,9 @@ userDetailRouter.get('/notifications', async (req, res) => {
 userDetailRouter.get('/notifications/stats', async (req, res) => {
   try {
     const { userId } = req.params;
-    const stats = await getNotificationStats(userId);
+    const stats = useFirebaseNotificationsBackend()
+      ? await firebaseNotificationsService.getNotificationStats(userId)
+      : await getNotificationStats(userId);
     res.json({ success: true, data: stats });
   } catch (error) {
     console.error('Error in GET /api/users/:userId/notifications/stats:', error);
@@ -454,7 +574,11 @@ userDetailRouter.get('/notifications/stats', async (req, res) => {
 userDetailRouter.put('/notifications/:notificationId/read', async (req, res) => {
   try {
     const { userId, notificationId } = req.params;
-    await markNotificationAsRead(userId, notificationId);
+    if (useFirebaseNotificationsBackend()) {
+      await firebaseNotificationsService.markNotificationAsRead(userId, notificationId);
+    } else {
+      await markNotificationAsRead(userId, notificationId);
+    }
     res.json({ success: true, message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error in PUT /api/users/:userId/notifications/:id/read:', error);
@@ -465,7 +589,9 @@ userDetailRouter.put('/notifications/:notificationId/read', async (req, res) => 
 userDetailRouter.put('/notifications/read-all', async (req, res) => {
   try {
     const { userId } = req.params;
-    const count = await markAllNotificationsAsRead(userId);
+    const count = useFirebaseNotificationsBackend()
+      ? await firebaseNotificationsService.markAllNotificationsAsRead(userId)
+      : await markAllNotificationsAsRead(userId);
     res.json({ success: true, message: `${count} notifications marked as read`, count });
   } catch (error) {
     console.error('Error in PUT /api/users/:userId/notifications/read-all:', error);
@@ -474,10 +600,21 @@ userDetailRouter.put('/notifications/read-all', async (req, res) => {
 });
 
 // Get user by ID (generic) – on same router so /api/users/:userId with no subpath
-userDetailRouter.get('/', async (req, res) => {
+userDetailRouter.get('/', async (req, res, next) => {
   try {
     const { userId } = req.params;
+    // Let explicit top-level routes handle these reserved slugs.
+    if (['with-documents', 'search', 'filter'].includes(String(userId || '').toLowerCase())) {
+      return next();
+    }
     const { complete } = req.query;
+    if (useFirebaseUsersBackend()) {
+      const user = complete === 'true'
+        ? await firebaseUsersService.getCompleteUserProfile(userId)
+        : await firebaseUsersService.getUserById(userId);
+      if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+      return res.json({ success: true, data: user });
+    }
     if (complete === 'true') {
       const user = await getCompleteUserProfile(userId);
       if (!user) return res.status(404).json({ success: false, error: 'User not found' });
@@ -498,7 +635,9 @@ app.use('/api/users/:userId', userDetailRouter);
 app.get('/api/users/search/:term', async (req, res) => {
   try {
     const { term } = req.params;
-    const users = await searchUsersByName(term);
+    const users = useFirebaseUsersBackend()
+      ? await firebaseUsersService.searchUsersByName(term)
+      : await searchUsersByName(term);
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     console.error('Error in GET /api/users/search/:term:', error);
@@ -510,7 +649,9 @@ app.get('/api/users/search/:term', async (req, res) => {
 app.get('/api/users/filter/gender/:gender', async (req, res) => {
   try {
     const { gender } = req.params;
-    const users = await getUsersByGender(gender);
+    const users = useFirebaseUsersBackend()
+      ? await firebaseUsersService.getUsersByGender(gender)
+      : await getUsersByGender(gender);
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     console.error('Error in GET /api/users/filter/gender/:gender:', error);
@@ -521,7 +662,9 @@ app.get('/api/users/filter/gender/:gender', async (req, res) => {
 // Get users with documents
 app.get('/api/users/with-documents', async (req, res) => {
   try {
-    const users = await getUsersWithDocuments();
+    const users = useFirebaseUsersBackend()
+      ? await firebaseUsersService.getUsersWithDocuments()
+      : await getUsersWithDocuments();
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     console.error('Error in GET /api/users/with-documents:', error);
@@ -532,6 +675,30 @@ app.get('/api/users/with-documents', async (req, res) => {
 // Platform analytics (TAU, MAU/WAU/DAU, activation, posts, groups, likes, comments — no documents)
 app.get('/api/statistics', async (req, res) => {
   try {
+    if (getSelectedBackend() === 'firebase') {
+      return res.json({
+        success: true,
+        data: {
+          totalRegisteredUsers: 0,
+          totalUsers: 0,
+          dailyActiveUsers: 0,
+          weeklyActiveUsers: 0,
+          monthlyActiveUsers: 0,
+          activationRate: 0,
+          newPosts: { daily: 0, weekly: 0, monthly: 0 },
+          newPostsMarketplace: { daily: 0, weekly: 0, monthly: 0 },
+          newGroups: { daily: 0, weekly: 0, monthly: 0 },
+          totalAggregatePosts: 0,
+          totalAggregateLikes: 0,
+          totalAggregateComments: 0,
+          usersByGender: { male: 0, female: 0, other: 0, unknown: 0 },
+          usersWithDocuments: 0,
+          usersWithoutDocuments: 0,
+          isFallback: true,
+          note: 'Analytics fallback is enabled while Firebase migration is in progress.',
+        },
+      });
+    }
     const stats = await getPlatformAnalytics();
     res.json({ success: true, data: stats });
   } catch (error) {
@@ -547,7 +714,9 @@ app.put('/api/users/:userId', async (req, res) => {
     const updateData = req.body;
     
     // Validate that user exists
-    const existingUser = await getUserById(userId);
+    const existingUser = useFirebaseUsersBackend()
+      ? await firebaseUsersService.getUserById(userId)
+      : await getUserById(userId);
     if (!existingUser) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -569,7 +738,9 @@ app.put('/api/users/:userId', async (req, res) => {
       });
     }
     
-    const updatedUser = await updateUser(userId, filteredData);
+    const updatedUser = useFirebaseUsersBackend()
+      ? await firebaseUsersService.updateUser(userId, filteredData)
+      : await updateUser(userId, filteredData);
     res.json({ success: true, data: updatedUser });
   } catch (error) {
     console.error('Error in PUT /api/users/:userId:', error);
@@ -603,7 +774,10 @@ app.post('/api/notifications/send', async (req, res) => {
       });
     }
 
-    const result = await sendNotification(userId, {
+    const notificationService = useFirebaseNotificationsBackend() ? firebaseNotificationsService : {
+      sendNotification,
+    };
+    const result = await notificationService.sendNotification(userId, {
       senderId,
       senderName,
       senderProfilePicture,
@@ -656,7 +830,10 @@ app.post('/api/notifications/send-bulk', async (req, res) => {
       });
     }
 
-    const result = await sendBulkNotifications(userIds, {
+    const notificationService = useFirebaseNotificationsBackend() ? firebaseNotificationsService : {
+      sendBulkNotifications,
+    };
+    const result = await notificationService.sendBulkNotifications(userIds, {
       senderId,
       senderName,
       senderProfilePicture,
@@ -692,7 +869,9 @@ app.post('/api/users/:userId/fcm-token', async (req, res) => {
       });
     }
 
-    const user = await saveFCMToken(userId, fcmToken);
+    const user = useFirebaseNotificationsBackend()
+      ? await firebaseNotificationsService.saveFCMToken(userId, fcmToken)
+      : await saveFCMToken(userId, fcmToken);
     res.json({
       success: true,
       data: user,
@@ -710,7 +889,9 @@ app.post('/api/users/:userId/fcm-token', async (req, res) => {
 app.get('/api/users/:userId/fcm-token', async (req, res) => {
   try {
     const { userId } = req.params;
-    const token = await getFCMToken(userId);
+    const token = useFirebaseNotificationsBackend()
+      ? await firebaseNotificationsService.getFCMToken(userId)
+      : await getFCMToken(userId);
     res.json({
       success: true,
       data: {
@@ -733,6 +914,23 @@ app.get('/api/users/:userId/fcm-token', async (req, res) => {
 app.post('/api/users/:userId/warn', async (req, res) => {
   try {
     const { userId } = req.params;
+    if (useFirebaseUsersBackend() && useFirebaseNotificationsBackend()) {
+      const user = await firebaseUsersService.getUserById(userId);
+      if (!user) return res.status(404).json({ success: false, error: 'User not found.' });
+      const { message, title } = req.body || {};
+      const result = await firebaseNotificationsService.sendNotification(userId, {
+        type: 'warning',
+        title: title || 'Warning from KINS',
+        body: message || 'You have received a warning from the KINS team. Please review our community guidelines.',
+        senderId: 'admin',
+        senderName: 'KINS Admin',
+      });
+      return res.status(200).json({
+        success: true,
+        message: 'Warning sent successfully',
+        notificationId: result?.notificationId || null,
+      });
+    }
     const { message, title } = req.body || {};
     const user = await getUserById(userId);
     if (!user) {
@@ -761,6 +959,18 @@ app.post('/api/users/:userId/warn', async (req, res) => {
 app.delete('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    if (useFirebaseUsersBackend()) {
+      const user = await firebaseUsersService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found.' });
+      }
+      const updated = await firebaseUsersService.softDeleteUser(userId);
+      return res.status(200).json({
+        success: true,
+        message: 'User has been deactivated. They can no longer log in.',
+        data: updated,
+      });
+    }
     const user = await getUserById(userId);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found.' });
@@ -782,6 +992,10 @@ app.delete('/api/users/:userId', async (req, res) => {
 // Get list of moderation keywords (used by Flagged tab; editable in CRM)
 app.get('/api/moderation/keywords', async (req, res) => {
   try {
+    if (useFirebaseModerationBackend()) {
+      const settings = await firebaseModerationService.getSettings();
+      return res.json({ success: true, keywords: settings.keywords });
+    }
     const keywords = await getModerationKeywords();
     res.json({ success: true, keywords });
   } catch (error) {
@@ -798,6 +1012,10 @@ app.put('/api/moderation/keywords', async (req, res) => {
       .map((k) => (k != null ? String(k).trim() : ''))
       .filter((k) => k !== '')
       .slice(0, 200);
+    if (useFirebaseModerationBackend()) {
+      const saved = await firebaseModerationService.setKeywords(keywords);
+      return res.json({ success: true, keywords: saved });
+    }
     const doc = await ModerationSetting.findOneAndUpdate(
       { key: ModerationSetting.DOC_ID },
       { $set: { keywords } },
@@ -813,6 +1031,14 @@ app.put('/api/moderation/keywords', async (req, res) => {
 // Get moderation/settings (keywords + marketplace requires approval)
 app.get('/api/moderation/settings', async (req, res) => {
   try {
+    if (useFirebaseModerationBackend()) {
+      const settings = await firebaseModerationService.getSettings();
+      return res.json({
+        success: true,
+        keywords: settings.keywords,
+        marketplaceRequiresApproval: settings.marketplaceRequiresApproval,
+      });
+    }
     const doc = await ModerationSetting.findOne({ key: ModerationSetting.DOC_ID }).lean();
     res.json({
       success: true,
@@ -829,6 +1055,13 @@ app.get('/api/moderation/settings', async (req, res) => {
 app.put('/api/moderation/settings', async (req, res) => {
   try {
     const marketplaceRequiresApproval = req.body.marketplaceRequiresApproval === true || req.body.marketplaceRequiresApproval === 'true';
+    if (useFirebaseModerationBackend()) {
+      const value = await firebaseModerationService.setMarketplaceRequiresApproval(marketplaceRequiresApproval);
+      return res.json({
+        success: true,
+        marketplaceRequiresApproval: value,
+      });
+    }
     const doc = await ModerationSetting.findOneAndUpdate(
       { key: ModerationSetting.DOC_ID },
       { $set: { marketplaceRequiresApproval } },
@@ -851,6 +1084,20 @@ app.get('/api/posts', async (req, res) => {
   try {
     const { limit = 20, startAfter, status = 'active', q, userId: userIdRaw } = req.query;
     const userIdStr = typeof userIdRaw === 'string' ? userIdRaw.trim() : Array.isArray(userIdRaw) ? String(userIdRaw[0] || '').trim() : null;
+    if (useFirebasePostsBackend()) {
+      const result = await firebasePostsService.listPosts({
+        limit: Math.min(parseInt(limit) || 20, 50),
+        status,
+        q: q || '',
+        userId: userIdStr || null,
+      });
+      return res.json({
+        success: true,
+        data: result.posts,
+        nextPageToken: result.nextPageToken,
+        hasMore: result.hasMore,
+      });
+    }
     const result = await getPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
@@ -874,6 +1121,17 @@ app.get('/api/posts', async (req, res) => {
 app.get('/api/posts/reported', async (req, res) => {
   try {
     const { limit = 20, startAfter } = req.query;
+    if (useFirebasePostsBackend()) {
+      const result = await firebasePostsService.listReportedPosts({
+        limit: Math.min(parseInt(limit) || 20, 50),
+      });
+      return res.json({
+        success: true,
+        data: result.posts,
+        nextPageToken: result.nextPageToken,
+        hasMore: result.hasMore,
+      });
+    }
     const result = await getReportedPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
@@ -894,6 +1152,17 @@ app.get('/api/posts/reported', async (req, res) => {
 app.get('/api/posts/flagged', async (req, res) => {
   try {
     const { limit = 20, startAfter } = req.query;
+    if (useFirebasePostsBackend()) {
+      const result = await firebasePostsService.listFlaggedPosts({
+        limit: Math.min(parseInt(limit) || 20, 50),
+      });
+      return res.json({
+        success: true,
+        data: result.posts,
+        nextPageToken: result.nextPageToken,
+        hasMore: result.hasMore,
+      });
+    }
     const result = await getFlaggedPostsPaginated({
       limit: Math.min(parseInt(limit) || 20, 50),
       startAfterDocId: startAfter || null,
@@ -914,6 +1183,13 @@ app.get('/api/posts/flagged', async (req, res) => {
 app.get('/api/posts/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
+    if (useFirebasePostsBackend()) {
+      const post = await firebasePostsService.getPostById(postId);
+      if (!post) {
+        return res.status(404).json({ success: false, error: 'Post not found' });
+      }
+      return res.json({ success: true, data: post });
+    }
     const post = await getPostById(postId);
     if (!post) {
       return res.status(404).json({ success: false, error: 'Post not found' });
@@ -930,6 +1206,11 @@ app.delete('/api/posts/:postId', async (req, res) => {
   try {
     const { postId } = req.params;
     const { hard } = req.query;
+    if (useFirebasePostsBackend()) {
+      const post = await firebasePostsService.softDeletePost(postId);
+      if (!post) return res.status(404).json({ success: false, error: 'Post not found' });
+      return res.json({ success: true, data: post, message: 'Post deleted (hidden from feed)' });
+    }
     if (hard === 'true') {
       await hardDeletePost(postId);
       return res.json({ success: true, message: 'Post permanently deleted' });
@@ -948,7 +1229,9 @@ app.delete('/api/posts/:postId', async (req, res) => {
 app.get('/api/onboarding', async (req, res) => {
   try {
     const activeOnly = req.query.activeOnly !== 'false';
-    const steps = await getOnboardingSteps({ activeOnly });
+    const steps = useFirebaseOnboardingBackend()
+      ? await firebaseOnboardingService.getOnboardingSteps({ activeOnly })
+      : await getOnboardingSteps({ activeOnly });
     res.json({ success: true, count: steps.length, data: steps });
   } catch (error) {
     console.error('Error in GET /api/onboarding:', error);
@@ -960,7 +1243,9 @@ app.get('/api/onboarding', async (req, res) => {
 app.get('/api/onboarding/:stepId', async (req, res) => {
   try {
     const { stepId } = req.params;
-    const step = await getOnboardingStepById(stepId);
+    const step = useFirebaseOnboardingBackend()
+      ? await firebaseOnboardingService.getOnboardingStepById(stepId)
+      : await getOnboardingStepById(stepId);
     if (!step) return res.status(404).json({ success: false, error: 'Onboarding step not found' });
     res.json({ success: true, data: step });
   } catch (error) {
@@ -972,7 +1257,9 @@ app.get('/api/onboarding/:stepId', async (req, res) => {
 // Create onboarding step
 app.post('/api/onboarding', async (req, res) => {
   try {
-    const step = await createOnboardingStep(req.body);
+    const step = useFirebaseOnboardingBackend()
+      ? await firebaseOnboardingService.createOnboardingStep(req.body)
+      : await createOnboardingStep(req.body);
     res.status(201).json({ success: true, data: step });
   } catch (error) {
     console.error('Error in POST /api/onboarding:', error);
@@ -984,7 +1271,9 @@ app.post('/api/onboarding', async (req, res) => {
 app.put('/api/onboarding/:stepId', async (req, res) => {
   try {
     const { stepId } = req.params;
-    const step = await updateOnboardingStep(stepId, req.body);
+    const step = useFirebaseOnboardingBackend()
+      ? await firebaseOnboardingService.updateOnboardingStep(stepId, req.body)
+      : await updateOnboardingStep(stepId, req.body);
     res.json({ success: true, data: step });
   } catch (error) {
     console.error('Error in PUT /api/onboarding/:stepId:', error);
@@ -996,7 +1285,11 @@ app.put('/api/onboarding/:stepId', async (req, res) => {
 app.delete('/api/onboarding/:stepId', async (req, res) => {
   try {
     const { stepId } = req.params;
-    await deleteOnboardingStep(stepId);
+    if (useFirebaseOnboardingBackend()) {
+      await firebaseOnboardingService.deleteOnboardingStep(stepId);
+    } else {
+      await deleteOnboardingStep(stepId);
+    }
     res.json({ success: true, message: 'Onboarding step deleted' });
   } catch (error) {
     console.error('Error in DELETE /api/onboarding/:stepId:', error);
@@ -1038,14 +1331,18 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
 
 // ==================== GROUPS (legacy for CRM dashboard) ====================
 function toGroupResponse(doc) {
-  if (!doc || !doc._id) return null;
+  if (!doc) return null;
+  const id = doc._id ? doc._id.toString() : (doc.id ? String(doc.id) : null);
+  if (!id) return null;
+  const members = Array.isArray(doc.members) ? doc.members : [];
+  const memberCount = typeof doc.memberCount === 'number' ? doc.memberCount : members.length;
   return {
-    id: doc._id.toString(),
+    id,
     name: doc.name,
     description: doc.description ?? null,
     type: doc.type ?? 'interactive',
-    memberCount: (doc.members || []).length,
-    imageUrl: doc.groupImageUrl ?? null,
+    memberCount,
+    imageUrl: doc.groupImageUrl ?? doc.imageUrl ?? null,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -1055,9 +1352,22 @@ app.get('/api/groups', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
-    const skip = (page - 1) * limit;
     const searchQ = (req.query.search || req.query.q || '').trim();
     const typeFilter = (req.query.type || '').toLowerCase();
+    if (useFirebaseGroupsBackend()) {
+      const result = await firebaseGroupsService.listGroups({
+        page,
+        limit,
+        search: searchQ,
+        type: typeFilter,
+      });
+      return res.json({
+        success: true,
+        groups: result.groups.map(toGroupResponse),
+        pagination: result.pagination,
+      });
+    }
+    const skip = (page - 1) * limit;
     const filter = {};
     if (searchQ.length >= 1) {
       const escaped = searchQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1085,6 +1395,11 @@ app.get('/api/groups', async (req, res) => {
 app.get('/api/groups/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseGroupsBackend()) {
+      const group = await firebaseGroupsService.getGroupById(id);
+      if (!group) return res.status(404).json({ success: false, error: 'Group not found.' });
+      return res.json({ success: true, group: toGroupResponse(group) });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid group ID.' });
     }
@@ -1138,6 +1453,18 @@ function toBrandVerificationResponse(doc, user) {
 
 app.get('/api/brands/verification', async (req, res) => {
   try {
+    if (useFirebaseVerificationBackend()) {
+      const status = (req.query.status || '').toLowerCase();
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+      const q = (req.query.q || '').trim();
+      const result = await firebaseVerificationService.listRequests({ status, page, limit, q });
+      return res.json({
+        success: true,
+        requests: result.requests,
+        pagination: result.pagination,
+      });
+    }
     const status = (req.query.status || '').toLowerCase();
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
@@ -1199,6 +1526,11 @@ app.get('/api/brands/verification', async (req, res) => {
 app.get('/api/brands/verification/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseVerificationBackend()) {
+      const request = await firebaseVerificationService.getRequestById(id);
+      if (!request) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+      return res.json({ success: true, request });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
     }
@@ -1218,6 +1550,12 @@ app.get('/api/brands/verification/:id', async (req, res) => {
 app.patch('/api/brands/verification/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseVerificationBackend()) {
+      const reviewNotes = req.body?.reviewNotes;
+      const request = await firebaseVerificationService.setStatus(id, 'approved', reviewNotes);
+      if (!request) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+      return res.json({ success: true, request });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
     }
@@ -1248,6 +1586,12 @@ app.patch('/api/brands/verification/:id/approve', async (req, res) => {
 app.patch('/api/brands/verification/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseVerificationBackend()) {
+      const reviewNotes = req.body?.reviewNotes;
+      const request = await firebaseVerificationService.setStatus(id, 'rejected', reviewNotes);
+      if (!request) return res.status(404).json({ success: false, error: 'Verification request not found.' });
+      return res.json({ success: true, request });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid verification ID.' });
     }
@@ -1276,20 +1620,23 @@ app.patch('/api/brands/verification/:id/reject', async (req, res) => {
 // ==================== MARKETPLACE (legacy for CRM dashboard) ====================
 
 function toMarketplaceListingResponse(doc, seller) {
-  if (!doc || !doc._id) return null;
+  if (!doc) return null;
+  const id = doc._id ? doc._id.toString() : (doc.id ? String(doc.id) : null);
+  if (!id) return null;
+  const sellerId = doc.sellerId && doc.sellerId.toString ? doc.sellerId.toString() : (doc.sellerId ? String(doc.sellerId) : null);
   const s = seller || null;
   const sellerPayload =
-    s && s._id
+    s && (s._id || s.id)
       ? {
-          id: s._id.toString(),
+          id: s._id ? s._id.toString() : String(s.id),
           name: s.name ?? null,
           username: s.username ?? null,
           profilePictureUrl: s.profilePictureUrl ?? null,
         }
       : null;
   return {
-    id: doc._id.toString(),
-    sellerId: doc.sellerId.toString(),
+    id,
+    sellerId,
     title: doc.title,
     description: doc.description ?? null,
     price: doc.price,
@@ -1312,9 +1659,19 @@ app.get('/api/marketplace/listings', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
-    const skip = (page - 1) * limit;
     const q = (req.query.q || req.query.search || '').trim();
     const status = (req.query.status || '').trim().toLowerCase();
+
+    if (useFirebaseMarketplaceBackend()) {
+      const result = await firebaseMarketplaceService.listListings({ page, limit, q, status });
+      return res.json({
+        success: true,
+        listings: result.listings.map((d) => toMarketplaceListingResponse(d, d.seller || null)),
+        pagination: result.pagination,
+      });
+    }
+
+    const skip = (page - 1) * limit;
 
     const filter = {};
     if (status && ['draft', 'pending', 'active', 'sold', 'archived'].includes(status)) {
@@ -1356,6 +1713,11 @@ app.get('/api/marketplace/listings', async (req, res) => {
 app.get('/api/marketplace/listings/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseMarketplaceBackend()) {
+      const listing = await firebaseMarketplaceService.getListingById(id);
+      if (!listing) return res.status(404).json({ success: false, error: 'Listing not found.' });
+      return res.json({ success: true, listing: toMarketplaceListingResponse(listing, listing.seller || null) });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
     }
@@ -1390,7 +1752,7 @@ app.post('/api/marketplace/listings', async (req, res) => {
       tags,
     } = req.body || {};
 
-    if (!sellerId || !require('mongoose').Types.ObjectId.isValid(sellerId)) {
+    if (!sellerId || (useFirebaseMarketplaceBackend() ? String(sellerId).trim().length === 0 : !require('mongoose').Types.ObjectId.isValid(sellerId))) {
       return res.status(400).json({ success: false, error: 'Valid sellerId is required.' });
     }
     if (!title || typeof title !== 'string' || !title.trim()) {
@@ -1422,6 +1784,11 @@ app.post('/api/marketplace/listings', async (req, res) => {
       payload.tags = tags.map((t) => (t != null ? String(t).trim() : '')).filter((t) => t.length > 0);
     }
 
+    if (useFirebaseMarketplaceBackend()) {
+      const listing = await firebaseMarketplaceService.createListing(payload);
+      return res.status(201).json({ success: true, listing: toMarketplaceListingResponse(listing, listing.seller || null) });
+    }
+
     let doc = await MarketplaceListing.create(payload);
     doc = doc.toObject();
     const User = require('./models/User');
@@ -1438,6 +1805,46 @@ app.post('/api/marketplace/listings', async (req, res) => {
 app.put('/api/marketplace/listings/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseMarketplaceBackend()) {
+      const {
+        sellerId,
+        title,
+        description,
+        price,
+        currency,
+        category,
+        condition,
+        imageUrls,
+        locationCity,
+        locationCountry,
+        status,
+        isFeatured,
+        tags,
+      } = req.body || {};
+      const updates = {};
+      if (sellerId !== undefined && String(sellerId).trim()) updates.sellerId = String(sellerId).trim();
+      if (title !== undefined) updates.title = String(title).trim();
+      if (description !== undefined) updates.description = String(description).trim();
+      if (price !== undefined) {
+        const priceNum = parseFloat(price);
+        if (Number.isNaN(priceNum) || priceNum < 0) {
+          return res.status(400).json({ success: false, error: 'price must be a non-negative number.' });
+        }
+        updates.price = priceNum;
+      }
+      if (currency !== undefined) updates.currency = String(currency).trim();
+      if (category !== undefined) updates.category = String(category).trim();
+      if (condition !== undefined) updates.condition = String(condition).trim();
+      if (locationCity !== undefined) updates.locationCity = String(locationCity).trim();
+      if (locationCountry !== undefined) updates.locationCountry = String(locationCountry).trim();
+      if (status !== undefined) updates.status = String(status).trim();
+      if (isFeatured !== undefined) updates.isFeatured = isFeatured === true || isFeatured === 'true';
+      if (Array.isArray(imageUrls)) updates.imageUrls = imageUrls.map((u) => (u != null ? String(u).trim() : '')).filter((u) => u.length > 0);
+      if (Array.isArray(tags)) updates.tags = tags.map((t) => (t != null ? String(t).trim() : '')).filter((t) => t.length > 0);
+      const listing = await firebaseMarketplaceService.updateListing(id, updates);
+      if (!listing) return res.status(404).json({ success: false, error: 'Listing not found.' });
+      return res.json({ success: true, listing: toMarketplaceListingResponse(listing, listing.seller || null) });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
     }
@@ -1501,6 +1908,11 @@ app.put('/api/marketplace/listings/:id', async (req, res) => {
 app.delete('/api/marketplace/listings/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseMarketplaceBackend()) {
+      const deleted = await firebaseMarketplaceService.deleteListing(id);
+      if (!deleted) return res.status(404).json({ success: false, error: 'Listing not found.' });
+      return res.json({ success: true, message: 'Listing deleted.' });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid listing ID.' });
     }
@@ -1514,14 +1926,12 @@ app.delete('/api/marketplace/listings/:id', async (req, res) => {
 });
 
 // ==================== ADS (legacy for CRM dashboard) ====================
-// Redirect trailing slash so /api/ads/ and /api/ads both work
-app.get('/api/ads/', (req, res) => res.redirect(301, '/api/ads'));
-app.get('/api/ads/active/', (req, res) => res.redirect(301, '/api/ads/active'));
-
 function toAdResponse(doc) {
-  if (!doc || !doc._id) return null;
+  if (!doc) return null;
+  const id = doc._id ? doc._id.toString() : (doc.id ? String(doc.id) : null);
+  if (!id) return null;
   return {
-    id: doc._id.toString(),
+    id,
     imageUrl: doc.imageUrl,
     link: doc.link,
     title: doc.title ?? null,
@@ -1535,6 +1945,10 @@ function toAdResponse(doc) {
 app.get('/api/ads/active', async (req, res) => {
   try {
     const placement = (req.query.placement || 'home').toLowerCase();
+    if (useFirebaseAdsBackend()) {
+      const ads = await firebaseAdsService.listActiveAds({ placement });
+      return res.json({ success: true, ads: ads.map(toAdResponse) });
+    }
     const filter = { isActive: true };
     if (placement === 'marketplace') {
       filter.isForMarketplace = true;
@@ -1553,6 +1967,10 @@ app.get('/api/ads', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    if (useFirebaseAdsBackend()) {
+      const result = await firebaseAdsService.listAds({ page, limit });
+      return res.json({ success: true, ads: result.ads.map(toAdResponse), pagination: result.pagination });
+    }
     const skip = (page - 1) * limit;
     const [ads, total] = await Promise.all([
       Ad.find({}).sort({ order: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
@@ -1568,6 +1986,11 @@ app.get('/api/ads', async (req, res) => {
 app.get('/api/ads/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseAdsBackend()) {
+      const ad = await firebaseAdsService.getAdById(id);
+      if (!ad) return res.status(404).json({ success: false, error: 'Ad not found.' });
+      return res.json({ success: true, ad: toAdResponse(ad) });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
     }
@@ -1612,14 +2035,19 @@ app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
         ? req.body.isForMarketplace === true || req.body.isForMarketplace === 'true'
         : false;
     const order = parseInt(req.body.order, 10);
-    const ad = await Ad.create({
+    const adPayload = {
       imageUrl: cdnUrl,
       link,
       title,
       isActive,
       isForMarketplace,
       order: Number.isNaN(order) ? 0 : order,
-    });
+    };
+    if (useFirebaseAdsBackend()) {
+      const ad = await firebaseAdsService.createAd(adPayload);
+      return res.status(201).json({ success: true, ad: toAdResponse(ad) });
+    }
+    const ad = await Ad.create(adPayload);
     res.status(201).json({ success: true, ad: toAdResponse(ad.toObject()) });
   } catch (err) {
     console.error('POST /api/ads:', err);
@@ -1630,6 +2058,31 @@ app.post('/api/ads', adsUpload.single('image'), async (req, res) => {
 app.put('/api/ads/:id', adsUpload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseAdsBackend()) {
+      const updates = {};
+      const existing = await firebaseAdsService.getAdById(id);
+      if (!existing) return res.status(404).json({ success: false, error: 'Ad not found.' });
+      if (req.file && req.file.buffer && BunnyService.isConfigured()) {
+        let buffer = req.file.buffer;
+        try {
+          const resized = await resizeAdImageToSpec(req.file.buffer);
+          buffer = resized.buffer;
+        } catch (e) {
+          return res.status(400).json({ success: false, error: 'Invalid or unsupported image. Use JPEG or PNG.' });
+        }
+        const fileName = `ad_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.jpg`;
+        const { cdnUrl } = await BunnyService.upload(buffer, fileName, 'ads');
+        updates.imageUrl = cdnUrl;
+      }
+      if (req.body.link !== undefined) updates.link = String(req.body.link).trim();
+      if (req.body.title !== undefined) updates.title = String(req.body.title).trim() || null;
+      if (req.body.isActive !== undefined) updates.isActive = req.body.isActive === true || req.body.isActive === 'true';
+      if (req.body.isForMarketplace !== undefined) updates.isForMarketplace = req.body.isForMarketplace === true || req.body.isForMarketplace === 'true';
+      const orderNum = parseInt(req.body.order, 10);
+      if (!Number.isNaN(orderNum)) updates.order = orderNum;
+      const ad = await firebaseAdsService.updateAd(id, updates);
+      return res.json({ success: true, ad: toAdResponse(ad) });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
     }
@@ -1666,6 +2119,11 @@ app.put('/api/ads/:id', adsUpload.single('image'), async (req, res) => {
 app.delete('/api/ads/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (useFirebaseAdsBackend()) {
+      const deleted = await firebaseAdsService.deleteAd(id);
+      if (!deleted) return res.status(404).json({ success: false, error: 'Ad not found.' });
+      return res.json({ success: true, message: 'Ad deleted.' });
+    }
     if (!require('mongoose').Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid ad ID.' });
     }
@@ -1684,7 +2142,9 @@ app.delete('/api/ads/:id', async (req, res) => {
 app.post('/api/surveys', async (req, res) => {
   try {
     console.log('POST /api/surveys called');
-    const survey = await createSurvey(req.body);
+    const survey = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.createSurvey(req.body)
+      : await createSurvey(req.body);
     res.status(201).json({ success: true, data: survey });
   } catch (error) {
     console.error('Error in POST /api/surveys:', error);
@@ -1700,7 +2160,9 @@ app.get('/api/surveys', async (req, res) => {
     if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (showOnHomePage !== undefined) filters.showOnHomePage = showOnHomePage === 'true';
     
-    const surveys = await getAllSurveys(filters);
+    const surveys = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getAllSurveys(filters)
+      : await getAllSurveys(filters);
     res.json({ success: true, count: surveys.length, data: surveys });
   } catch (error) {
     console.error('Error in GET /api/surveys:', error);
@@ -1711,7 +2173,9 @@ app.get('/api/surveys', async (req, res) => {
 // Get active home page survey
 app.get('/api/surveys/active', async (req, res) => {
   try {
-    const survey = await getActiveHomePageSurvey();
+    const survey = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getActiveHomePageSurvey()
+      : await getActiveHomePageSurvey();
     if (!survey) {
       return res.json({ success: true, data: null, message: 'No active survey' });
     }
@@ -1726,7 +2190,9 @@ app.get('/api/surveys/active', async (req, res) => {
 app.get('/api/surveys/:surveyId', async (req, res) => {
   try {
     const { surveyId } = req.params;
-    const survey = await getSurveyById(surveyId);
+    const survey = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getSurveyById(surveyId)
+      : await getSurveyById(surveyId);
     if (!survey) {
       return res.status(404).json({ success: false, error: 'Survey not found' });
     }
@@ -1741,7 +2207,9 @@ app.get('/api/surveys/:surveyId', async (req, res) => {
 app.put('/api/surveys/:surveyId', async (req, res) => {
   try {
     const { surveyId } = req.params;
-    const updatedSurvey = await updateSurvey(surveyId, req.body);
+    const updatedSurvey = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.updateSurvey(surveyId, req.body)
+      : await updateSurvey(surveyId, req.body);
     res.json({ success: true, data: updatedSurvey });
   } catch (error) {
     console.error('Error in PUT /api/surveys/:surveyId:', error);
@@ -1753,7 +2221,9 @@ app.put('/api/surveys/:surveyId', async (req, res) => {
 app.delete('/api/surveys/:surveyId', async (req, res) => {
   try {
     const { surveyId } = req.params;
-    const deletedSurvey = await deleteSurvey(surveyId);
+    const deletedSurvey = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.deleteSurvey(surveyId)
+      : await deleteSurvey(surveyId);
     res.json({ success: true, data: deletedSurvey, message: 'Survey deactivated' });
   } catch (error) {
     console.error('Error in DELETE /api/surveys/:surveyId:', error);
@@ -1773,7 +2243,9 @@ app.post('/api/surveys/:surveyId/respond', async (req, res) => {
     if (payload == null) {
       return res.status(400).json({ success: false, error: 'selectedOptionId or responses array is required' });
     }
-    const response = await submitSurveyResponse(userId, surveyId, payload);
+    const response = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.submitSurveyResponse(userId, surveyId, payload)
+      : await submitSurveyResponse(userId, surveyId, payload);
     res.status(201).json({ success: true, data: response });
   } catch (error) {
     console.error('Error in POST /api/surveys/:surveyId/respond:', error);
@@ -1786,7 +2258,9 @@ app.post('/api/surveys/:surveyId/respond', async (req, res) => {
 app.get('/api/surveys/:surveyId/analytics', async (req, res) => {
   try {
     const { surveyId } = req.params;
-    const analytics = await getSurveyAnalytics(surveyId);
+    const analytics = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getSurveyAnalytics(surveyId)
+      : await getSurveyAnalytics(surveyId);
     res.json({ success: true, data: analytics });
   } catch (error) {
     console.error('Error in GET /api/surveys/:surveyId/analytics:', error);
@@ -1798,7 +2272,9 @@ app.get('/api/surveys/:surveyId/analytics', async (req, res) => {
 app.get('/api/users/:userId/survey-responses', async (req, res) => {
   try {
     const { userId } = req.params;
-    const responses = await getUserSurveyResponses(userId);
+    const responses = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getUserSurveyResponses(userId)
+      : await getUserSurveyResponses(userId);
     res.json({ success: true, count: responses.length, data: responses });
   } catch (error) {
     console.error('Error in GET /api/users/:userId/survey-responses:', error);
@@ -1810,7 +2286,9 @@ app.get('/api/users/:userId/survey-responses', async (req, res) => {
 app.get('/api/users/:userId/survey-responses/:surveyId', async (req, res) => {
   try {
     const { userId, surveyId } = req.params;
-    const response = await getUserSurveyResponse(userId, surveyId);
+    const response = useFirebaseSurveysBackend()
+      ? await firebaseSurveysService.getUserSurveyResponse(userId, surveyId)
+      : await getUserSurveyResponse(userId, surveyId);
     res.json({ success: true, data: response });
   } catch (error) {
     console.error('Error in GET /api/users/:userId/survey-responses/:surveyId:', error);

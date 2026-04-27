@@ -23,6 +23,25 @@ Single reference for all environment variables used by Kindash in production.
 | **API_KEY** | ❌ | Optional extra API protection. | Any string if you use it. |
 | **MONGODB_QUERY_TIMING** | ❌ | Debug only. | Set to `1` to log query timing. |
 | **VERCEL** | ❌ | Set by Vercel automatically. | Do not set on EC2/other hosts. |
+| **DATA_BACKEND_DEFAULT** | ❌ | Internal migration flag. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_AUTH** | ❌ | Internal migration flag for `/api/v1/auth/login` data provider. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_ME** | ❌ | Internal migration flag for `/api/v1/me` profile reads/writes provider. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_FEED** | ❌ | Internal migration flag for mobile `/api/v1/feed` + `/api/v1/posts` (list/detail/create/delete/report) backed by Firestore. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_INTERESTS** | ❌ | Internal migration flag for interests/categories CRUD domain. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_USERS** | ❌ | Internal migration flag for CRM users domain endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_GROUPS** | ❌ | Internal migration flag for CRM groups list/detail endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_ADS** | ❌ | Internal migration flag for ads list/detail/create/update/delete endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_MARKETPLACE** | ❌ | Internal migration flag for marketplace listings CRUD endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_SURVEYS** | ❌ | Internal migration flag for surveys + survey responses endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_ONBOARDING** | ❌ | Internal migration flag for onboarding steps endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_MODERATION** | ❌ | Internal migration flag for moderation settings/keywords endpoints. | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_POSTS** | ❌ | Internal migration flag for CRM posts moderation endpoints (`/api/posts*`). | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_VERIFICATION** | ❌ | Internal migration flag for brand verification endpoints (`/api/brands/verification*`). | `mongo` (default) or `firebase`. |
+| **DATA_BACKEND_NOTIFICATIONS** | ❌ | Internal migration flag for broadcast + user notification endpoints. | `mongo` (default) or `firebase`. |
+
+When `DATA_BACKEND_AUTH=firebase`, login also keeps a Mongo shadow user in sync so existing JWT-protected Mongo-backed endpoints continue to work during migration.
+
+After pulling changes that add Firestore composite queries (for example notifications `userId` + `createdAt` / `read`), deploy indexes so production does not fall back to slower paths: `firebase deploy --only firestore:indexes` (requires Firebase CLI and the same project as `FIREBASE_PROJECT_ID`).
 
 ---
 
@@ -117,6 +136,21 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 PORT=3000
 # API_KEY=...
 # MONGODB_QUERY_TIMING=1
+# DATA_BACKEND_DEFAULT=mongo
+# DATA_BACKEND_AUTH=mongo
+# DATA_BACKEND_ME=mongo
+# DATA_BACKEND_INTERESTS=mongo
+# DATA_BACKEND_USERS=mongo
+# DATA_BACKEND_GROUPS=mongo
+# DATA_BACKEND_ADS=mongo
+# DATA_BACKEND_MARKETPLACE=mongo
+# DATA_BACKEND_SURVEYS=mongo
+# DATA_BACKEND_ONBOARDING=mongo
+# DATA_BACKEND_MODERATION=mongo
+# DATA_BACKEND_POSTS=mongo
+# DATA_BACKEND_VERIFICATION=mongo
+# DATA_BACKEND_NOTIFICATIONS=mongo
+# DATA_BACKEND_FEED=mongo
 
 # ─── Optional (Firebase Storage) ──────────────────────────────────
 # FIREBASE_STORAGE_BUCKET=....firebasestorage.app

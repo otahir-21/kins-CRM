@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
+const { getAuthDataProvider, getSelectedBackend } = require('../../services/data/authDataProvider');
 
 const PROVIDERS = ['phone', 'google', 'apple'];
 
@@ -37,6 +38,56 @@ function toUserResponse(user) {
   };
 }
 
+function toFirebaseUserPayload(user, provider, providerUserId) {
+  return {
+    provider,
+    providerUserId: providerUserId.trim(),
+    name: user.name ?? null,
+    email: user.email ?? null,
+    phoneNumber: user.phoneNumber ?? null,
+    username: user.username ?? null,
+    profilePictureUrl: user.profilePictureUrl ?? null,
+    bio: user.bio ?? null,
+    status: user.status ?? null,
+    gender: user.gender ?? null,
+    dateOfBirth: user.dateOfBirth ?? null,
+    documentUrl: user.documentUrl ?? null,
+    country: user.country ?? null,
+    city: user.city ?? null,
+    followerCount: user.followerCount ?? 0,
+    followingCount: user.followingCount ?? 0,
+    deletedAt: null,
+  };
+}
+
+async function upsertMongoShadowUser({ provider, providerUserId, updates }) {
+  let shadow = await User.findOne({
+    provider,
+    providerUserId,
+    $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
+  }).lean();
+
+  if (!shadow) {
+    const created = await User.create({
+      provider,
+      providerUserId: providerUserId.trim(),
+      name: updates.name ?? null,
+      email: updates.email ?? null,
+      phoneNumber: updates.phoneNumber ?? null,
+      profilePictureUrl: updates.profilePictureUrl ?? null,
+    });
+    shadow = created && created.toObject ? created.toObject() : created;
+    return shadow;
+  }
+
+  if (Object.keys(updates).length > 1) {
+    await User.findByIdAndUpdate(shadow._id, updates);
+    shadow = { ...shadow, ...updates };
+  }
+
+  return shadow;
+}
+
 /**
  * POST /api/v1/auth/login
  * Body: { provider, providerUserId, phoneNumber?, email?, name?, profilePictureUrl? }
@@ -63,16 +114,14 @@ async function login(req, res) {
   const timing = {};
 
   try {
+    const authDataProvider = getAuthDataProvider();
+    const selectedBackend = getSelectedBackend();
     const startMs = Date.now();
     console.time('LOGIN_TOTAL');
 
     // User lookup (indexed: provider + providerUserId); .lean() for read-only
     console.time('LOGIN_User.findOne');
-    let user = await User.findOne({
-      provider,
-      providerUserId,
-      $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }],
-    }).lean();
+    let user = await authDataProvider.findActiveUserByProvider(provider, providerUserId);
     console.timeEnd('LOGIN_User.findOne');
     timing.userFindOneMs = Date.now() - startMs;
 
@@ -85,7 +134,7 @@ async function login(req, res) {
     if (profilePictureUrl !== undefined) updates.profilePictureUrl = profilePictureUrl && typeof profilePictureUrl === 'string' ? profilePictureUrl.trim() || null : null;
 
     if (!user) {
-      user = await User.create({
+      user = await authDataProvider.createProviderUser({
         provider,
         providerUserId: providerUserId.trim(),
         name: updates.name ?? null,
@@ -93,10 +142,26 @@ async function login(req, res) {
         phoneNumber: updates.phoneNumber ?? null,
         profilePictureUrl: updates.profilePictureUrl ?? null,
       });
-      user = user.toObject ? user.toObject() : user;
     } else if (Object.keys(updates).length > 1) {
-      await User.findByIdAndUpdate(user._id, updates);
+      await authDataProvider.updateUserById(user._id, updates);
       user = { ...user, ...updates };
+    }
+
+    // Bridge mode: when Firebase is selected, keep Mongo shadow user in sync
+    // so existing JWT-protected endpoints continue working without contract changes.
+    if (selectedBackend === 'firebase') {
+      try {
+        const shadowUser = await upsertMongoShadowUser({ provider, providerUserId, updates });
+        // Canonical bridge: keep Firebase users doc id aligned with JWT/Mongo user id.
+        await authDataProvider.updateUserById(
+          shadowUser._id,
+          toFirebaseUserPayload(shadowUser, provider, providerUserId)
+        );
+        user = shadowUser;
+      } catch (bridgeErr) {
+        // Allow Firebase login even if Mongo is temporarily unavailable.
+        console.warn('[auth/login] Mongo shadow sync skipped:', bridgeErr.message);
+      }
     }
 
     // No bcrypt in this flow (provider-based auth: phone/google/apple)
@@ -112,7 +177,7 @@ async function login(req, res) {
 
     timing.totalMs = Date.now() - startMs;
     console.timeEnd('LOGIN_TOTAL');
-    console.log('[login] timing', timing);
+    console.log('[login] timing', { ...timing, dataBackend: selectedBackend });
 
     const payload = {
       success: true,

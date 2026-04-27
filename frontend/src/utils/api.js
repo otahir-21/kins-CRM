@@ -267,12 +267,12 @@ export const apiService = {
   },
   getGroupById: (id) => api.get(`/api/groups/${id}`),
 
-  // Ads (CRM dashboard). List uses v1 so it works when only /api/v1 is exposed; create/update/delete use legacy (no JWT).
+  // Ads (CRM dashboard). Use legacy /api/ads endpoints.
   getAds: (params = {}) => {
     const sp = new URLSearchParams();
     if (params.page) sp.append('page', params.page);
     if (params.limit) sp.append('limit', params.limit);
-    return api.get(`/api/v1/ads?${sp.toString()}`);
+    return api.get(`/api/ads?${sp.toString()}`);
   },
   getAdById: (id) => api.get(`/api/ads/${id}`),
   createAd: (formData) => api.post('/api/ads', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),

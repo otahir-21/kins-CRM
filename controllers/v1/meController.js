@@ -5,6 +5,7 @@ const Post = require('../../models/Post');
 const { isValidObjectId } = require('../../utils/validateObjectId');
 const { getUserNotifications, getNotificationStats, markNotificationAsRead, markAllNotificationsAsRead } = require('../../notifications-helpers');
 const { createCustomToken, getMissingFirebaseEnv, getLastFirebaseError } = require('../../services/firebaseAdmin');
+const { getUserDataProvider } = require('../../services/data/userDataProvider');
 const BunnyService = require('../../services/BunnyService');
 
 const ABOUT_FIELDS = ['name', 'username', 'bio', 'status', 'gender', 'dateOfBirth', 'profilePictureUrl', 'documentUrl', 'email', 'phoneNumber', 'country', 'city'];
@@ -58,7 +59,13 @@ function toInterestDoc(i) {
  * GET /me - current user profile
  */
 async function getMe(req, res) {
-  return res.status(200).json({ success: true, user: toUserResponse(req.user) });
+  try {
+    const userDataProvider = getUserDataProvider();
+    const user = await userDataProvider.findById(req.userId);
+    return res.status(200).json({ success: true, user: toUserResponse(user || req.user) });
+  } catch (_) {
+    return res.status(200).json({ success: true, user: toUserResponse(req.user) });
+  }
 }
 
 /**
@@ -121,6 +128,7 @@ async function getFirebaseToken(req, res) {
  */
 async function uploadProfilePicture(req, res) {
   try {
+    const userDataProvider = getUserDataProvider();
     const file = req.files && req.files[0];
     if (!file || !file.buffer) {
       return res.status(400).json({ success: false, error: 'No image provided. Use multipart field name: media (same as post upload).' });
@@ -133,11 +141,7 @@ async function uploadProfilePicture(req, res) {
     }
     const fileName = file.originalname || `profile_${Date.now()}.jpg`;
     const { cdnUrl } = await BunnyService.upload(file.buffer, fileName, 'profile');
-    const user = await User.findByIdAndUpdate(
-      req.userId,
-      { profilePictureUrl: cdnUrl, updatedAt: new Date() },
-      { new: true }
-    ).lean();
+    const user = await userDataProvider.updateById(req.userId, { profilePictureUrl: cdnUrl, updatedAt: new Date() }, { returnUpdated: true });
     return res.status(200).json({ success: true, user: toUserResponse(user), profilePictureUrl: cdnUrl });
   } catch (err) {
     console.error('POST /me/profile-picture error:', err);
@@ -150,6 +154,7 @@ async function uploadProfilePicture(req, res) {
  * Body: { name?, username?, bio?, status?, gender?, dateOfBirth?, profilePictureUrl?, documentUrl?, email?, phoneNumber?, country?, city?, latitude?, longitude?, locationIsVisible? }
  */
 async function updateMeAbout(req, res) {
+  const userDataProvider = getUserDataProvider();
   const filtered = {};
   for (const key of ABOUT_FIELDS) {
     if (req.body[key] !== undefined) {
@@ -170,7 +175,7 @@ async function updateMeAbout(req, res) {
   }
 
   if (req.body.latitude !== undefined || req.body.longitude !== undefined || req.body.locationIsVisible !== undefined) {
-    const current = await User.findById(req.userId).select('location').lean();
+    const current = await userDataProvider.findById(req.userId);
     const loc = current?.location || {};
     let lat = req.body.latitude !== undefined ? Number(req.body.latitude) : (loc.latitude ?? null);
     let lng = req.body.longitude !== undefined ? Number(req.body.longitude) : (loc.longitude ?? null);
@@ -192,7 +197,7 @@ async function updateMeAbout(req, res) {
   }
 
   filtered.updatedAt = new Date();
-  const user = await User.findByIdAndUpdate(req.userId, { $set: filtered }, { new: true }).lean();
+  const user = await userDataProvider.updateById(req.userId, filtered, { returnUpdated: true });
   return res.status(200).json({ success: true, user: toUserResponse(user) });
 }
 
@@ -243,9 +248,10 @@ async function getMyInterests(req, res) {
  */
 async function saveFcmToken(req, res) {
   try {
+    const userDataProvider = getUserDataProvider();
     const { fcmToken } = req.body;
     const token = typeof fcmToken === 'string' ? fcmToken.trim() || null : null;
-    await User.findByIdAndUpdate(req.userId, { fcmToken: token, updatedAt: new Date() });
+    await userDataProvider.updateById(req.userId, { fcmToken: token, updatedAt: new Date() });
     return res.status(200).json({ success: true, message: 'FCM token saved.' });
   } catch (err) {
     console.error('POST /me/fcm-token error:', err);
@@ -259,9 +265,10 @@ async function saveFcmToken(req, res) {
  */
 async function deleteMe(req, res) {
   try {
+    const userDataProvider = getUserDataProvider();
     const userId = req.userId;
     await Post.updateMany({ userId }, { isActive: false });
-    await User.findByIdAndDelete(userId);
+    await userDataProvider.deleteById(userId);
     return res.status(200).json({ success: true, message: 'Account deleted successfully.' });
   } catch (err) {
     console.error('DELETE /me error:', err);

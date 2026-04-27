@@ -8,6 +8,7 @@
 let firebaseAdmin = null;
 let auth = null;
 let messaging = null;
+let firestore = null;
 let lastFirebaseError = null;
 
 /** Returns list of missing env var names (empty if all set). */
@@ -94,6 +95,23 @@ function getMessaging() {
 }
 
 /**
+ * Get Firestore client. Returns null if Firebase is not configured.
+ */
+function getFirestore() {
+  const a = getAuth();
+  if (!a || !firebaseAdmin) return null;
+  if (firestore) return firestore;
+  try {
+    firestore = firebaseAdmin.firestore();
+    return firestore;
+  } catch (err) {
+    lastFirebaseError = err.message || String(err);
+    console.error('Firebase Firestore init error:', lastFirebaseError);
+    return null;
+  }
+}
+
+/**
  * Send FCM data (and optional notification) to multiple tokens.
  * @param {string[]} tokens - FCM device tokens
  * @param {Record<string, string>} data - data payload (e.g. type, conversationId, senderId, ...)
@@ -131,4 +149,4 @@ async function sendMulticast(tokens, data, notification = null) {
   }
 }
 
-module.exports = { getAuth, getMessaging, createCustomToken, sendMulticast, getMissingFirebaseEnv, getLastFirebaseError };
+module.exports = { getAuth, getFirestore, getMessaging, createCustomToken, sendMulticast, getMissingFirebaseEnv, getLastFirebaseError };
