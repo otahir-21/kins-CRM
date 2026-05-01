@@ -77,12 +77,12 @@ const BunnyService = require('./services/BunnyService');
 const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
 const { connectDB } = require('./config/db');
-const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
+const { ensureMongo, mongoDisabledByEnv } = require('./middleware/ensureMongoMiddleware');
 const { firebaseCrmFallback } = require('./middleware/firebaseCrmFallbackMiddleware');
 const { requestTimingMiddleware } = require('./middleware/requestTimingMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
 const v1Routes = require('./routes/v1');
-const { getSelectedBackend } = require('./services/data/backendSelector');
+const { getSelectedBackend, isFullFirebaseMigration } = require('./services/data/backendSelector');
 const firebaseUsersService = require('./services/firebaseUsersService');
 const firebaseGroupsService = require('./services/firebaseGroupsService');
 const firebaseAdsService = require('./services/firebaseAdsService');
@@ -94,7 +94,7 @@ const firebasePostsService = require('./services/firebasePostsService');
 const firebaseVerificationService = require('./services/firebaseVerificationService');
 const firebaseNotificationsService = require('./services/firebaseNotificationsService');
 
-if (process.env.MONGODB_URI) {
+if (process.env.MONGODB_URI && !mongoDisabledByEnv() && !isFullFirebaseMigration()) {
   connectDB().catch((err) => console.error('MongoDB connection failed:', err.message));
 }
 
@@ -285,6 +285,14 @@ app.get('/api-info', (req, res) => {
     },
     documentation: 'See README.md for detailed API documentation'
   });
+});
+
+// Root: when frontend/dist exists, fall through so static + SPA serve index.html;
+// otherwise browsers opening localhost:3000 get API discovery instead of 404 JSON.
+const frontendDistPath = path.join(__dirname, 'frontend', 'dist');
+app.get('/', (req, res, next) => {
+  if (fs.existsSync(frontendDistPath)) return next();
+  res.redirect(302, '/api-info');
 });
 
 // Health check endpoint

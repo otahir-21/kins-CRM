@@ -5,14 +5,28 @@
  */
 
 const { connectDB } = require('../lib/mongodb');
-const { getSelectedBackend } = require('../services/data/backendSelector');
+const { getSelectedBackend, isFullFirebaseMigration } = require('../services/data/backendSelector');
+
+/** Explicit opt-out (Firebase-only deploys) without listing every DATA_BACKEND_* scope. */
+function mongoDisabledByEnv() {
+  const v = String(process.env.USE_MONGO || '').trim().toLowerCase();
+  return v === 'false' || v === '0' || v === 'no';
+}
 
 function shouldBypassMongo(req) {
+  if (mongoDisabledByEnv()) return true;
+
   const reqPath = req.path || '';
   const method = req.method || 'GET';
 
   // Health checks should never require DB.
   if (reqPath === '/health' || reqPath === '/api/v1/health') return true;
+
+  // API discovery JSON — no database access.
+  if (reqPath === '/api-info') return true;
+
+  // All routed domains use Firestore/Firebase — Mongo is unused.
+  if (isFullFirebaseMigration()) return true;
 
   // Allow frontend/static routes without DB checks.
   if (!reqPath.startsWith('/api') && !reqPath.startsWith('/auth')) return true;
@@ -128,4 +142,4 @@ async function ensureMongo(req, res, next) {
   }
 }
 
-module.exports = { ensureMongo };
+module.exports = { ensureMongo, mongoDisabledByEnv };

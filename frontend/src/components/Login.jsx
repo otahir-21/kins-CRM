@@ -98,7 +98,7 @@ const Login = () => {
 
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>Default credentials:</p>
-          <p className="font-mono text-xs mt-1">admin@kins.com / password123</p>
+          <p className="font-mono text-xs mt-1">admin@kins.com or admin@vyooo.com / password123</p>
         </div>
       </div>
     </div>
