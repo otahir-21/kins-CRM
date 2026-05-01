@@ -26,6 +26,14 @@ jobs:
             fi
             cd kins-CRM
             git pull origin main
+            # Firestore-only CRM: append once so /api/groups etc. skip Mongo (503) when Atlas isn’t used.
+            # To disable: GitHub repo → Settings → Actions → Variables → CRM_SKIP_FIREBASE_ENV = true
+            if [ "${{ vars.CRM_SKIP_FIREBASE_ENV }}" != "true" ]; then
+              touch .env
+              if ! grep -q '# KINS_CRM_CI_FIREBASE_DEFAULTS' .env 2>/dev/null; then
+                printf '\n# KINS_CRM_CI_FIREBASE_DEFAULTS (do not remove — CI idempotency marker)\nUSE_MONGO=false\nDATA_BACKEND_DEFAULT=firebase\n' >> .env
+              fi
+            fi
             npm install
             npm run build
             pm2 restart kins-api || pm2 start server.js --name kins-api

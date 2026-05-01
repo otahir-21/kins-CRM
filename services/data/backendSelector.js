@@ -2,7 +2,15 @@ function normalizeBackend(raw) {
   return String(raw || '').trim().toLowerCase();
 }
 
+/** When false, all domains read/write Firestore paths — matches ensureMongo bypass. */
+function mongoDisabledByEnv() {
+  const v = String(process.env.USE_MONGO || '').trim().toLowerCase();
+  return v === 'false' || v === '0' || v === 'no';
+}
+
 function getSelectedBackend(scope) {
+  if (mongoDisabledByEnv()) return 'firebase';
+
   const scoped = scope ? process.env[`DATA_BACKEND_${String(scope).toUpperCase()}`] : null;
   const raw = scoped || process.env.DATA_BACKEND_DEFAULT || 'mongo';
   const normalized = normalizeBackend(raw);
@@ -34,4 +42,5 @@ function isFullFirebaseMigration() {
 module.exports = {
   getSelectedBackend,
   isFullFirebaseMigration,
+  mongoDisabledByEnv,
 };

@@ -5,13 +5,7 @@
  */
 
 const { connectDB } = require('../lib/mongodb');
-const { getSelectedBackend, isFullFirebaseMigration } = require('../services/data/backendSelector');
-
-/** Explicit opt-out (Firebase-only deploys) without listing every DATA_BACKEND_* scope. */
-function mongoDisabledByEnv() {
-  const v = String(process.env.USE_MONGO || '').trim().toLowerCase();
-  return v === 'false' || v === '0' || v === 'no';
-}
+const { getSelectedBackend, isFullFirebaseMigration, mongoDisabledByEnv } = require('../services/data/backendSelector');
 
 function shouldBypassMongo(req) {
   if (mongoDisabledByEnv()) return true;
@@ -142,4 +136,4 @@ async function ensureMongo(req, res, next) {
   }
 }
 
-module.exports = { ensureMongo, mongoDisabledByEnv };
+module.exports = { ensureMongo };

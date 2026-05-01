@@ -77,12 +77,12 @@ const BunnyService = require('./services/BunnyService');
 const { resizeAdImageToSpec } = require('./helpers/adsImageResize');
 // Load config/db so optional query timing is applied; it re-exports connectDB from lib/mongodb
 const { connectDB } = require('./config/db');
-const { ensureMongo, mongoDisabledByEnv } = require('./middleware/ensureMongoMiddleware');
+const { ensureMongo } = require('./middleware/ensureMongoMiddleware');
 const { firebaseCrmFallback } = require('./middleware/firebaseCrmFallbackMiddleware');
 const { requestTimingMiddleware } = require('./middleware/requestTimingMiddleware');
 const interestsMongoRoutes = require('./routes/interestsMongoRoutes');
 const v1Routes = require('./routes/v1');
-const { getSelectedBackend, isFullFirebaseMigration } = require('./services/data/backendSelector');
+const { getSelectedBackend, isFullFirebaseMigration, mongoDisabledByEnv } = require('./services/data/backendSelector');
 const firebaseUsersService = require('./services/firebaseUsersService');
 const firebaseGroupsService = require('./services/firebaseGroupsService');
 const firebaseAdsService = require('./services/firebaseAdsService');
