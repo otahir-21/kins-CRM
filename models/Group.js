@@ -19,7 +19,6 @@ const groupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-groupSchema.index({ createdBy: 1 });
 groupSchema.index({ members: 1 });
 groupSchema.index({ nameLower: 1 }, { unique: true, sparse: true });
 groupSchema.index({ createdAt: -1 });

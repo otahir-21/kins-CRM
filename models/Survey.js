@@ -41,8 +41,6 @@ const surveySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-surveySchema.index({ isActive: 1 });
-surveySchema.index({ showOnHomePage: 1 });
 surveySchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Survey', surveySchema);

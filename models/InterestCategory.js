@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const interestCategorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    nameNormalized: { type: String, lowercase: true, trim: true, index: true },
+    nameNormalized: { type: String, lowercase: true, trim: true },
     order: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true, index: true },
   },

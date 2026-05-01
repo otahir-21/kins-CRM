@@ -10,7 +10,6 @@ const postReportSchema = new mongoose.Schema(
 );
 
 postReportSchema.index({ reporterId: 1, postId: 1 }, { unique: true });
-postReportSchema.index({ postId: 1 });
 postReportSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('PostReport', postReportSchema);

@@ -27,6 +27,5 @@ const userFeedSchema = new mongoose.Schema(
 userFeedSchema.index({ userId: 1, postId: 1 }, { unique: true });
 // Compound index for feed queries (userId + score descending)
 userFeedSchema.index({ userId: 1, score: -1, createdAt: -1 });
-userFeedSchema.index({ postId: 1 }); // for cleanup/updates
 
 module.exports = mongoose.model('UserFeed', userFeedSchema);

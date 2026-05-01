@@ -15,7 +15,6 @@ const pollVoteSchema = new mongoose.Schema(
 );
 
 pollVoteSchema.index({ userId: 1, postId: 1 }, { unique: true });
-pollVoteSchema.index({ postId: 1 });
 pollVoteSchema.index({ postId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('PollVote', pollVoteSchema);

@@ -12,7 +12,5 @@ const moderationSettingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-moderationSettingSchema.index({ key: 1 });
-
 module.exports = mongoose.model('ModerationSetting', moderationSettingSchema);
 module.exports.DOC_ID = DOC_ID;
